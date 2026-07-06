@@ -34,20 +34,6 @@ Files: `logo-green-valley.svg/.png`, `green-valley-v2-hexagon.svg/.png`, `green-
 
 ---
 
-## HindiUSA
-
-**Palette:** Saffron `#f97316` · Deep Green `#15803d` · Navy `#1e3a8a` · Gold `#fbbf24` · Cream `#fffbeb`
-
-| Variant | Preview | Style | Best for |
-|---------|---------|-------|----------|
-| **V1 — Tricolor Circle Badge** *(currently active)* | ![HindiUSA circle](assets/logos/hindiusa-v1-circle.svg) | Round badge: saffron/green tricolor arcs, glowing diya over an open book, navy ring | Report cards, certificates, formal documents |
-| **V2 — Minimal Monogram** | ![HindiUSA monogram](assets/logos/hindiusa-v2-monogram.svg) | Flat navy rounded square, bold "HU" with diya accent and tricolor underline | App icons, favicons, small-size uses |
-| **V3 — Lotus & Book Emblem** | ![HindiUSA lotus](assets/logos/hindiusa-v3-lotus.svg) | Light emblem: saffron lotus blooming over an open book | Letterheads, website headers, light backgrounds |
-
-Files: `hindiusa-v1-circle.svg/.png`, `hindiusa-v2-monogram.svg/.png`, `hindiusa-v3-lotus.svg/.png`
-
----
-
 ## How to switch an organization's logo
 
 **Option A — through the app (any variant, any org):**

@@ -179,36 +179,6 @@ Student emails follow the pattern: `firstname@student.greenvalley.edu`
 
 ---
 
-## Org 3: HindiUSA
-
-**Organization ID (slug):** `hindiusa`
-
-### Accounts
-| Role | Email | Password |
-|------|-------|----------|
-| Admin | admin@hindiusa.org | Password@123 |
-| Teacher (Hindi Reading) | anjali@hindiusa.org | Password@123 |
-| Teacher (Hindi Writing) | rekha@hindiusa.org | Password@123 |
-| Teacher — co-teacher on Level 3 (Speaking) | suresh@hindiusa.org | Password@123 |
-| Teacher — co-teacher on Level 3 (Culture) | kavita@hindiusa.org | Password@123 |
-| Volunteer | volunteer@hindiusa.org | Password@123 |
-| Admin Staff (office + cultural events) | staff@hindiusa.org | Password@123 |
-| Students | aanya / ishan / diya / arnav @student.hindiusa.org | Password@123 |
-| Parents | parent1..parent4@hindiusa.org | Password@123 |
-
-### Data Summary
-- 3 classes: Prarambh, Level 1-A, Level 3 (**Level 3 has two co-teachers**)
-- Custom grade levels: Prarambh, Level 1-4, Praveen
-- 24 students (rolls HU-001..HU-024), 4 with logins
-- 4 subjects: Hindi Reading, Hindi Writing, Hindi Speaking, Indian Culture
-- 60 approved exams, 480 marks — report cards ready
-- 96 attendance records (Saturday weekend classes, July 2026)
-- 3 books (one custom "Cultural Reading" category), 2 homework items (one references a book)
-- 5 holidays incl. Diwali Break and US Independence Day
-- Report card config with tricolor HindiUSA logo
-
----
-
 ## Invite-Only Registration
 
 Self-registration is disabled — teachers, students, parents, volunteers, and admin staff can only join via an admin invitation:

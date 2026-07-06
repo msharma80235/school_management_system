@@ -52,7 +52,7 @@ See **[ROLES_AND_DUTIES.md](ROLES_AND_DUTIES.md)** for the full duties document 
 ## Core Capabilities
 
 ### Multi-tenancy & Organizations
-- Every org has its own slug-based login (`sunrise-academy`, `hindiusa`, …), users, data, logo, and report card branding — fully isolated.
+- Every org has its own slug-based login (`sunrise-academy`, `green-valley`, …), users, data, logo, and report card branding — fully isolated.
 - Self-service org onboarding at `/register`.
 - Custom grade levels per org (a nonprofit can use its own level names instead of Class 1–12).
 
