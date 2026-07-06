@@ -96,6 +96,10 @@ See **[ROLES_AND_DUTIES.md](ROLES_AND_DUTIES.md)** for the full duties document 
 - Books and school documents uploaded by non-moderators sit in **pending** state — invisible to everyone but the uploader — until a moderator/admin approves them from the **Moderation** queue (with inline file preview and full details). Rejections carry a note; editing resubmits.
 - Teachers and staff can submit school documents (subject to approval); admins/moderators publish instantly.
 
+### Content Safety
+- Admin-only **Content Safety** page inventories every upload in the org (book files, documents, exam papers, generated exam questions, student photos, logos) and scans all readable text against rule-based wordlists.
+- Items with adult content or profanity are **flagged**; violence/substance mentions and images (which can't be auto-analyzed) go to **needs manual review**; the rest are clean. Admins can mark items safe — decisions survive re-scans.
+
 ### Documents & Communication
 - **School documents** (schedules, events, notices, circulars) uploaded by admin (or submitted by teachers/staff via moderation), visible to selected audiences (teachers/students/parents/volunteers/staff).
 - **Roles & Duties document** — admin-editable, viewable by everyone.

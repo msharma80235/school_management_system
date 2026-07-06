@@ -38,6 +38,7 @@ model Organization {
   invitations  Invitation[]
   schedule_slots ClassScheduleSlot[]
   teacher_schedule_slots TeacherScheduleSlot[]
+  content_scan_results ContentScanResult[]
 
   @@map("organizations")
 }
@@ -434,6 +435,28 @@ model TeacherScheduleSlot {
   created_at  DateTime @default(now())
 
   @@map("teacher_schedule_slots")
+}
+
+// One row per scanned upload — the content-safety inventory
+model ContentScanResult {
+  id          String    @id @default(uuid())
+  source_type String    // book | document | exam_paper | exam_questions | student_photo | org_logo
+  source_id   String
+  title       String
+  file_path   String?
+  status      String    // clean | review | flagged
+  categories  String?   // JSON array: ["adult", "profanity", ...]
+  matches     String?   // JSON: [{ term, category, count }]
+  note        String?   // e.g. why an item needs manual review
+  scanned_at  DateTime  @default(now())
+  resolved_by String?
+  resolved_at DateTime?
+  resolution  String?   // marked_safe
+  org_id      String
+  org         Organization @relation(fields: [org_id], references: [id])
+
+  @@unique([source_type, source_id])
+  @@map("content_scan_results")
 }
 
 model RolesDocument {
