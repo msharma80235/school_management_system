@@ -1,0 +1,73 @@
+import express from 'express';
+import cors from 'cors';
+import cookieParser from 'cookie-parser';
+import authRoutes from './routes/auth.routes';
+import teacherRoutes from './routes/teacher.routes';
+import classRoutes from './routes/class.routes';
+import studentRoutes from './routes/student.routes';
+import gradeRoutes from './routes/grade.routes';
+import parentRoutes from './routes/parent.routes';
+import attendanceRoutes from './routes/attendance.routes';
+import orgRoutes from './routes/org.routes';
+import studentAccountRoutes from './routes/studentAccount.routes';
+import subjectRoutes from './routes/subject.routes';
+import examRoutes from './routes/exam.routes';
+import marksRoutes from './routes/marks.routes';
+import reportCardRoutes from './routes/reportCard.routes';
+import homeworkRoutes from './routes/homework.routes';
+import bookRoutes from './routes/book.routes';
+import volunteerRoutes from './routes/volunteer.routes';
+import volunteerAttendanceRoutes from './routes/volunteerAttendance.routes';
+import documentRoutes from './routes/document.routes';
+import staffRoutes from './routes/staff.routes';
+import holidayRoutes from './routes/holiday.routes';
+import rolesDocumentRoutes from './routes/rolesDocument.routes';
+import superRoutes from './routes/super.routes';
+import inviteRoutes from './routes/invite.routes';
+import orgUsersRoutes from './routes/orgUsers.routes';
+import moderationRoutes from './routes/moderation.routes';
+import scheduleRoutes from './routes/schedule.routes';
+import teacherScheduleRoutes from './routes/teacherSchedule.routes';
+import chatRoutes from './routes/chat.routes';
+
+const app = express();
+
+app.use(cors({ origin: true, credentials: true }));
+app.use(express.json());
+app.use(cookieParser());
+app.use('/uploads', express.static('uploads'));
+
+app.use('/api/auth', authRoutes);
+app.use('/api/org', orgRoutes);
+app.use('/api/users/teachers', teacherRoutes);
+app.use('/api/classes', classRoutes);
+app.use('/api/students', studentRoutes);
+app.use('/api/student-account', studentAccountRoutes);
+app.use('/api/grades', gradeRoutes);
+app.use('/api/parents', parentRoutes);
+app.use('/api/attendance', attendanceRoutes);
+app.use('/api/subjects', subjectRoutes);
+app.use('/api/exams', examRoutes);
+app.use('/api/marks', marksRoutes);
+app.use('/api/report-cards', reportCardRoutes);
+app.use('/api/homework', homeworkRoutes);
+app.use('/api/books', bookRoutes);
+app.use('/api/users/volunteers', volunteerRoutes);
+app.use('/api/volunteer-attendance', volunteerAttendanceRoutes);
+app.use('/api/documents', documentRoutes);
+app.use('/api/users/staff', staffRoutes);
+app.use('/api/holidays', holidayRoutes);
+app.use('/api/roles-document', rolesDocumentRoutes);
+app.use('/api/super', superRoutes);
+app.use('/api/invites', inviteRoutes);
+app.use('/api/org-users', orgUsersRoutes);
+app.use('/api/moderation', moderationRoutes);
+app.use('/api/schedules', scheduleRoutes);
+app.use('/api/teacher-schedules', teacherScheduleRoutes);
+app.use('/api/chat', chatRoutes);
+
+app.get('/api/health', (_req, res) => {
+  res.json({ status: 'ok' });
+});
+
+export default app;

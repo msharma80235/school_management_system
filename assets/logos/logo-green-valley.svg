@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="gv1" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#059669"/>
+      <stop offset="100%" style="stop-color:#065f46"/>
+    </linearGradient>
+  </defs>
+  <circle cx="100" cy="100" r="90" fill="url(#gv1)" stroke="#065f46" stroke-width="2"/>
+  <circle cx="100" cy="100" r="82" fill="none" stroke="#ffffff" stroke-width="1" opacity="0.2"/>
+  <circle cx="100" cy="100" r="78" fill="none" stroke="#ffffff" stroke-width="0.5" opacity="0.15"/>
+  <g opacity="0.3" fill="#ffffff">
+    <polygon points="30,130 65,80 100,130"/>
+    <polygon points="70,130 110,70 150,130"/>
+    <polygon points="110,130 140,85 170,130"/>
+  </g>
+  <g transform="translate(100,65)">
+    <ellipse cx="0" cy="0" rx="28" ry="22" fill="#34d399" opacity="0.9"/>
+    <ellipse cx="-12" cy="8" rx="20" ry="18" fill="#10b981" opacity="0.8"/>
+    <ellipse cx="12" cy="8" rx="20" ry="18" fill="#10b981" opacity="0.8"/>
+    <ellipse cx="0" cy="-5" rx="22" ry="18" fill="#6ee7b7" opacity="0.7"/>
+    <rect x="-4" y="18" width="8" height="20" rx="2" fill="#92400e" opacity="0.8"/>
+  </g>
+  <g transform="translate(100,125)">
+    <path d="M-25,0 Q-25,-12 0,-14 Q25,-12 25,0 L25,12 Q25,4 0,2 Q-25,4 -25,12 Z" fill="#ffffff" opacity="0.85"/>
+    <line x1="0" y1="-14" x2="0" y2="2" stroke="#065f46" stroke-width="1.2"/>
+  </g>
+  <text x="100" y="160" text-anchor="middle" font-family="Georgia, serif" font-size="14" font-weight="bold" fill="#ffffff" letter-spacing="3">GREEN VALLEY</text>
+  <g fill="#fbbf24" opacity="0.9">
+    <polygon points="55,42 57,48 63,48 58,52 60,58 55,54 50,58 52,52 47,48 53,48" transform="scale(0.6) translate(30,20)"/>
+    <polygon points="55,42 57,48 63,48 58,52 60,58 55,54 50,58 52,52 47,48 53,48" transform="scale(0.6) translate(210,20)"/>
+    <polygon points="55,42 57,48 63,48 58,52 60,58 55,54 50,58 52,52 47,48 53,48" transform="scale(0.5) translate(155,5)"/>
+  </g>
+</svg>
