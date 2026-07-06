@@ -1,0 +1,486 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id         String   @id @default(uuid())
+  name       String
+  slug       String   @unique
+  email      String
+  phone      String?
+  address    String?
+  logo_url   String?
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  users        User[]
+  classes      Class[]
+  students     Student[]
+  grade_levels GradeLevel[]
+  attendance   Attendance[]
+  subjects     Subject[]
+  exams        Exam[]
+  marks        Mark[]
+  report_config ReportCardConfig?
+  homework     Homework[]
+  books        Book[]
+  volunteer_attendance VolunteerAttendance[]
+  school_documents SchoolDocument[]
+  staff_assignments StaffAssignment[]
+  holidays     Holiday[]
+  roles_document RolesDocument?
+  invitations  Invitation[]
+  schedule_slots ClassScheduleSlot[]
+  teacher_schedule_slots TeacherScheduleSlot[]
+
+  @@map("organizations")
+}
+
+model User {
+  id         String   @id @default(uuid())
+  name       String
+  email      String
+  password   String
+  role       String   @default("teacher")
+  subject    String?
+  is_active    Boolean  @default(true)
+  is_locked    Boolean  @default(false)
+  is_moderator Boolean  @default(false) // can approve content uploads (books, documents)
+  org_id     String?  // null for platform super admins
+  org        Organization? @relation(fields: [org_id], references: [id])
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  students        Student[]       @relation("EnteredBy")
+  student_profile Student?        @relation("StudentAccount")
+  parent_students ParentStudent[]
+  attendance      Attendance[]
+  marks_entered   Mark[]
+  homework_assigned Homework[]
+  volunteer_attendance VolunteerAttendance[] @relation("VolunteerOwn")
+  volunteer_attendance_marked VolunteerAttendance[] @relation("VolunteerMarkedBy")
+  class_teachers ClassTeacher[] @relation("ClassTeachers")
+  documents_uploaded SchoolDocument[]
+  staff_assignments StaffAssignment[] @relation("StaffDuties")
+  holidays_created Holiday[]
+  invitations_created Invitation[]
+  books_uploaded  Book[] @relation("BookUploader")
+  books_reviewed  Book[] @relation("BookReviewer")
+  documents_reviewed SchoolDocument[] @relation("DocReviewer")
+  class_slots_teaching ClassScheduleSlot[] @relation("ClassSlotTeacher")
+  teacher_schedule_slots TeacherScheduleSlot[] @relation("TeacherPersonalSlots")
+
+  @@unique([email, org_id])
+  @@map("users")
+}
+
+model GradeLevel {
+  id            String   @id @default(uuid())
+  name          String
+  display_order Int      @default(0)
+  org_id        String
+  org           Organization @relation(fields: [org_id], references: [id])
+  created_at    DateTime @default(now())
+
+  @@unique([name, org_id])
+  @@map("grade_levels")
+}
+
+model Class {
+  id            String   @id @default(uuid())
+  name          String
+  section       String
+  academic_year String
+  org_id        String
+  org           Organization @relation(fields: [org_id], references: [id])
+  created_at    DateTime @default(now())
+
+  students      Student[]
+  attendance    Attendance[]
+  class_subjects ClassSubject[]
+  exams         Exam[]
+  homework      Homework[]
+  books         Book[]
+  class_teachers ClassTeacher[]
+  staff_assignments StaffAssignment[]
+  schedule_slots ClassScheduleSlot[]
+
+  @@unique([name, section, academic_year, org_id])
+  @@map("classes")
+}
+
+model ClassTeacher {
+  id         String @id @default(uuid())
+  class_id   String
+  teacher_id String
+  class      Class  @relation(fields: [class_id], references: [id])
+  teacher    User   @relation("ClassTeachers", fields: [teacher_id], references: [id])
+
+  @@unique([class_id, teacher_id])
+  @@map("class_teachers")
+}
+
+model Student {
+  id              String   @id @default(uuid())
+  first_name      String
+  last_name       String
+  roll_number     String
+  date_of_birth   String
+  gender          String
+  class_id        String
+  class           Class    @relation(fields: [class_id], references: [id])
+  parent_name     String
+  parent_phone    String
+  address         String?
+  photo_path      String?  // optional student photo, printed on the marksheet
+  is_active       Boolean  @default(true)
+  entered_by      String?
+  entered_by_user User?    @relation("EnteredBy", fields: [entered_by], references: [id])
+  user_id         String?  @unique
+  user            User?    @relation("StudentAccount", fields: [user_id], references: [id])
+  org_id          String
+  org             Organization @relation(fields: [org_id], references: [id])
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  parent_links ParentStudent[]
+  attendance   Attendance[]
+  marks        Mark[]
+  invitations  Invitation[]
+
+  @@unique([roll_number, org_id])
+  @@map("students")
+}
+
+model ParentStudent {
+  id         String @id @default(uuid())
+  parent_id  String
+  student_id String
+  parent     User    @relation(fields: [parent_id], references: [id])
+  student    Student @relation(fields: [student_id], references: [id])
+
+  @@unique([parent_id, student_id])
+  @@map("parent_students")
+}
+
+model Attendance {
+  id         String   @id @default(uuid())
+  student_id String
+  class_id   String
+  date       String
+  status     String   @default("present")
+  remarks    String?
+  marked_by  String?
+  student    Student  @relation(fields: [student_id], references: [id])
+  class      Class    @relation(fields: [class_id], references: [id])
+  marked_by_user User? @relation(fields: [marked_by], references: [id])
+  org_id     String
+  org        Organization @relation(fields: [org_id], references: [id])
+  created_at DateTime @default(now())
+
+  @@unique([student_id, date])
+  @@map("attendance")
+}
+
+model Subject {
+  id         String   @id @default(uuid())
+  name       String
+  code       String
+  org_id     String
+  org        Organization @relation(fields: [org_id], references: [id])
+  created_at DateTime @default(now())
+
+  class_subjects ClassSubject[]
+  exams          Exam[]
+  homework       Homework[]
+  books          Book[]
+  schedule_slots ClassScheduleSlot[]
+
+  @@unique([code, org_id])
+  @@map("subjects")
+}
+
+model ClassSubject {
+  id         String @id @default(uuid())
+  class_id   String
+  subject_id String
+  class      Class   @relation(fields: [class_id], references: [id])
+  subject    Subject @relation(fields: [subject_id], references: [id])
+
+  @@unique([class_id, subject_id])
+  @@map("class_subjects")
+}
+
+model Exam {
+  id              String   @id @default(uuid())
+  name            String
+  exam_type       String
+  term            String
+  class_id        String
+  subject_id      String
+  max_marks       Int
+  exam_date       String?
+  approval_status String   @default("draft")
+  submitted_at    DateTime?
+  approved_at     DateTime?
+  rejection_note  String?
+  question_paper_path String? // uploaded exam paper (PDF) the exam was created from
+  exam_format     String?  // quiz | subjective — set when questions were generated from a file
+  class           Class    @relation(fields: [class_id], references: [id])
+  subject         Subject  @relation(fields: [subject_id], references: [id])
+  org_id          String
+  org             Organization @relation(fields: [org_id], references: [id])
+  created_at      DateTime @default(now())
+
+  marks Mark[]
+  questions ExamQuestion[]
+
+  @@map("exams")
+}
+
+model ExamQuestion {
+  id             String  @id @default(uuid())
+  exam_id        String
+  order          Int     @default(0)
+  question_type  String  // mcq | fill_blank | true_false | short_note | long_answer
+  question_text  String
+  options        String? // JSON array of choices (mcq only)
+  correct_answer String? // objective questions only — never shown to students
+  marks          Int     @default(1)
+  exam           Exam    @relation(fields: [exam_id], references: [id])
+
+  @@map("exam_questions")
+}
+
+model Mark {
+  id             String   @id @default(uuid())
+  student_id     String
+  exam_id        String
+  marks_obtained Float
+  remarks        String?
+  entered_by     String?
+  student        Student  @relation(fields: [student_id], references: [id])
+  exam           Exam     @relation(fields: [exam_id], references: [id])
+  entered_by_user User?   @relation(fields: [entered_by], references: [id])
+  org_id         String
+  org            Organization @relation(fields: [org_id], references: [id])
+  created_at     DateTime @default(now())
+
+  @@unique([student_id, exam_id])
+  @@map("marks")
+}
+
+model ReportCardConfig {
+  id              String @id @default(uuid())
+  org_id          String @unique
+  org             Organization @relation(fields: [org_id], references: [id])
+  institute_name  String?
+  institute_logo  String?
+  address_line    String?
+  tagline         String?
+  show_attendance Boolean @default(true)
+  show_photo      Boolean @default(true)
+  show_grade      Boolean @default(true)
+  show_percentage Boolean @default(true)
+  show_rank       Boolean @default(false)
+  show_remarks    Boolean @default(true)
+  principal_name  String?
+  grading_system  String  @default("[{\"min\":90,\"max\":100,\"grade\":\"A+\",\"remark\":\"Outstanding\"},{\"min\":80,\"max\":89,\"grade\":\"A\",\"remark\":\"Excellent\"},{\"min\":70,\"max\":79,\"grade\":\"B+\",\"remark\":\"Very Good\"},{\"min\":60,\"max\":69,\"grade\":\"B\",\"remark\":\"Good\"},{\"min\":50,\"max\":59,\"grade\":\"C\",\"remark\":\"Satisfactory\"},{\"min\":40,\"max\":49,\"grade\":\"D\",\"remark\":\"Needs Improvement\"},{\"min\":0,\"max\":39,\"grade\":\"F\",\"remark\":\"Fail\"}]")
+
+  @@map("report_card_config")
+}
+
+model Homework {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  class_id    String
+  subject_id  String
+  book_id     String?
+  due_date    String
+  assigned_by String?
+  is_active   Boolean  @default(true)
+  class       Class    @relation(fields: [class_id], references: [id])
+  subject     Subject  @relation(fields: [subject_id], references: [id])
+  book        Book?    @relation(fields: [book_id], references: [id])
+  assigned_by_user User? @relation(fields: [assigned_by], references: [id])
+  org_id      String
+  org         Organization @relation(fields: [org_id], references: [id])
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@map("homework")
+}
+
+model Book {
+  id              String   @id @default(uuid())
+  title           String
+  author          String
+  isbn            String?
+  publisher       String?
+  edition         String?
+  subject_id      String?
+  custom_category String?
+  class_id        String?
+  is_mandatory    Boolean  @default(true)
+  file_path       String?
+  approval_status String   @default("approved") // pending | approved | rejected
+  uploaded_by     String?
+  reviewed_by     String?
+  reviewed_at     DateTime?
+  review_note     String?
+  uploader        User?    @relation("BookUploader", fields: [uploaded_by], references: [id])
+  reviewer        User?    @relation("BookReviewer", fields: [reviewed_by], references: [id])
+  subject         Subject? @relation(fields: [subject_id], references: [id])
+  class           Class?   @relation(fields: [class_id], references: [id])
+  org_id          String
+  org             Organization @relation(fields: [org_id], references: [id])
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  homework Homework[]
+
+  @@map("books")
+}
+
+model StaffAssignment {
+  id              String   @id @default(uuid())
+  staff_id        String
+  assignment_type String
+  class_id        String?
+  details         String?
+  staff           User     @relation("StaffDuties", fields: [staff_id], references: [id])
+  class           Class?   @relation(fields: [class_id], references: [id])
+  org_id          String
+  org             Organization @relation(fields: [org_id], references: [id])
+  created_at      DateTime @default(now())
+
+  @@map("staff_assignments")
+}
+
+model Holiday {
+  id          String   @id @default(uuid())
+  title       String
+  date        String
+  end_date    String?
+  description String?
+  created_by  String?
+  creator     User?    @relation(fields: [created_by], references: [id])
+  org_id      String
+  org         Organization @relation(fields: [org_id], references: [id])
+  created_at  DateTime @default(now())
+
+  @@map("holidays")
+}
+
+model Invitation {
+  id          String    @id @default(uuid())
+  code        String    @unique
+  role        String    // teacher | student | parent | volunteer | staff
+  email       String?   // locks registration to this email when set
+  name        String?   // suggested name, prefilled on the join page
+  subject     String?   // for teacher invites
+  student_id  String?   // student to link (student login / parent's child)
+  student     Student?  @relation(fields: [student_id], references: [id])
+  status      String    @default("pending") // pending | accepted | revoked
+  expires_at  DateTime
+  accepted_at DateTime?
+  created_by  String?
+  creator     User?     @relation(fields: [created_by], references: [id])
+  org_id      String
+  org         Organization @relation(fields: [org_id], references: [id])
+  created_at  DateTime  @default(now())
+
+  @@map("invitations")
+}
+
+model ClassScheduleSlot {
+  id          String   @id @default(uuid())
+  class_id    String
+  day_of_week Int      // 0=Sunday .. 6=Saturday (matches JS Date.getDay())
+  start_time  String   // "HH:MM" 24h
+  end_time    String   // "HH:MM" 24h
+  subject_id  String?
+  title       String?  // custom slots like Assembly or Lunch Break
+  location    String?
+  teacher_id  String?  // who teaches this period — collision-checked across all their slots
+  class       Class    @relation(fields: [class_id], references: [id])
+  subject     Subject? @relation(fields: [subject_id], references: [id])
+  teacher     User?    @relation("ClassSlotTeacher", fields: [teacher_id], references: [id])
+  org_id      String
+  org         Organization @relation(fields: [org_id], references: [id])
+  created_at  DateTime @default(now())
+
+  @@map("class_schedule_slots")
+}
+
+model TeacherScheduleSlot {
+  id          String   @id @default(uuid())
+  teacher_id  String
+  day_of_week Int      // 0=Sunday .. 6=Saturday
+  start_time  String   // "HH:MM" 24h
+  end_time    String
+  title       String   // Bus Duty, Staff Meeting, Office Hours...
+  location    String?
+  teacher     User     @relation("TeacherPersonalSlots", fields: [teacher_id], references: [id])
+  org_id      String
+  org         Organization @relation(fields: [org_id], references: [id])
+  created_at  DateTime @default(now())
+
+  @@map("teacher_schedule_slots")
+}
+
+model RolesDocument {
+  id         String   @id @default(uuid())
+  title      String   @default("Roles & Responsibilities")
+  sections   String   // JSON: [{ heading, note?, duties: string[] }]
+  org_id     String   @unique
+  org        Organization @relation(fields: [org_id], references: [id])
+  updated_at DateTime @updatedAt
+
+  @@map("roles_documents")
+}
+
+model SchoolDocument {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  category    String   @default("general")
+  file_path   String
+  audience    String   @default("teacher,student,parent,volunteer")
+  approval_status String @default("approved") // pending | approved | rejected
+  reviewed_by String?
+  reviewed_at DateTime?
+  review_note String?
+  reviewer    User?    @relation("DocReviewer", fields: [reviewed_by], references: [id])
+  uploaded_by String?
+  uploader    User?    @relation(fields: [uploaded_by], references: [id])
+  org_id      String
+  org         Organization @relation(fields: [org_id], references: [id])
+  created_at  DateTime @default(now())
+
+  @@map("school_documents")
+}
+
+model VolunteerAttendance {
+  id           String   @id @default(uuid())
+  volunteer_id String
+  date         String
+  status       String   @default("present")
+  remarks      String?
+  marked_by    String?
+  volunteer    User     @relation("VolunteerOwn", fields: [volunteer_id], references: [id])
+  marked_by_user User?  @relation("VolunteerMarkedBy", fields: [marked_by], references: [id])
+  org_id       String
+  org          Organization @relation(fields: [org_id], references: [id])
+  created_at   DateTime @default(now())
+
+  @@unique([volunteer_id, date])
+  @@map("volunteer_attendance")
+}

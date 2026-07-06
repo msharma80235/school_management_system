@@ -1,0 +1,21 @@
+# All files and folders starting with a dot (.env, .env.test, .DS_Store, ...)
+.*
+# ...except this file and the env template (contains no real secrets)
+!.gitignore
+!.env.example
+
+# Local SQLite databases — contain user data and password hashes, never commit
+*.db
+*.db-journal
+*.sqlite
+
+# User-uploaded content: student photos, scanned documents, book copies,
+# exam papers, org logos. Keep the empty folder so multer can write into it.
+uploads/*
+!uploads/.gitkeep
+
+node_modules
+dist
+*.log
+
+/src/generated/prisma
