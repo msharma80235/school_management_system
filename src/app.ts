@@ -29,6 +29,7 @@ import moderationRoutes from './routes/moderation.routes';
 import scheduleRoutes from './routes/schedule.routes';
 import teacherScheduleRoutes from './routes/teacherSchedule.routes';
 import chatRoutes from './routes/chat.routes';
+import contentSafetyRoutes from './routes/contentSafety.routes';
 
 const app = express();
 
@@ -65,6 +66,7 @@ app.use('/api/moderation', moderationRoutes);
 app.use('/api/schedules', scheduleRoutes);
 app.use('/api/teacher-schedules', teacherScheduleRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/content-safety', contentSafetyRoutes);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' });

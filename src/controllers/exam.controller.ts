@@ -1,8 +1,7 @@
 import { Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
-// direct lib import skips pdf-parse's debug harness, which breaks under tsx
-import pdfParse from 'pdf-parse/lib/pdf-parse.js';
+import { extractPdfText } from '../utils/pdfText';
 import PDFDocument from 'pdfkit';
 import prisma from '../prisma/client';
 import { canAccessClass } from '../utils/classAccess';
@@ -78,7 +77,7 @@ export async function generateExamQuestions(req: Request, res: Response): Promis
 
     let text = '';
     try {
-      const parsed = await pdfParse(fs.readFileSync(full));
+      const parsed = await extractPdfText(fs.readFileSync(full));
       text = parsed.text || '';
     } catch { /* fall through to the empty-text error below */ }
 
@@ -253,9 +252,9 @@ export async function importExamFile(req: Request, res: Response): Promise<void>
     let text = '';
     let pages = 0;
     try {
-      const parsed = await pdfParse(buffer);
+      const parsed = await extractPdfText(buffer);
       text = parsed.text || '';
-      pages = parsed.numpages || 0;
+      pages = parsed.pages || 0;
     } catch {
       // unreadable/scanned PDF — keep the file, suggest from the filename
     }

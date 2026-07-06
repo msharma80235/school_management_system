@@ -36,6 +36,12 @@ Admin assigns any number of **moderators** from the Users page (Users → "Make 
 
 ---
 
+## Content Safety
+
+Admin sidebar → **Content Safety** → "Scan All Content" inventories every upload (books, documents, exam papers, generated questions, photos, logos) and checks text against kid-safety wordlists. Sample data: **"Story Draft (safety test)"** is a planted document that gets **flagged** (adult/profanity terms) and **"History Notes 1857"** lands in **needs review** (violence terms in a legitimate history context — marked safe as a demo). Images always need manual review.
+
+---
+
 ## Class Schedules on the Calendar
 
 Admin builds each class's weekly timetable under **Class Schedules** (or the "Schedule" button on a class card). The **School Calendar** then shows the schedule for a selected class: periods appear as chips on each weekday, holidays automatically suppress them ("no classes"), and clicking a date shows that day's full period list. Teachers see their assigned classes, students/parents see their own/child's class. Sample data: **Class 1-A and 1-B** have full Mon–Fri timetables (assembly, subject periods, lunch).
