@@ -87,7 +87,7 @@ Migrate SQLite → Postgres (with Prisma this is mostly a datasource change + re
 | No-ops preference | Render Starter + persistent disk | ~$9/mo |
 | 10+ schools | VPS/PaaS + managed Postgres + R2 object storage | ~$30–45/mo |
 
-Start with the ~$6–8/month VPS — it matches the current SQLite + local-uploads architecture exactly, and one small server comfortably runs every seeded org (Sunrise Academy, Green Valley, HindiUSA).
+Start with the ~$6–8/month VPS — it matches the current SQLite + local-uploads architecture exactly, and one small server comfortably runs every seeded org (Sunrise Academy, Green Valley, and the test orgs).
 
 ### Next steps when deploying
 1. Pick provider → point domain at the server

@@ -20,9 +20,6 @@ const credentials: Credential[] = [
   { role: 'Student', orgSlug: 'sunrise-academy', email: 'aarav.wilson@student.sunrise.edu', password: 'Password@123', label: 'Roll: SA-001' },
   { role: 'Parent', orgSlug: 'sunrise-academy', email: 'rajesh.sharma0@parent.sunrise.edu', password: 'Password@123' },
   { role: 'Admin', orgSlug: 'green-valley', email: 'admin@greenvalley.edu', password: 'Password@123', label: 'Green Valley School' },
-  { role: 'Admin', orgSlug: 'hindiusa', email: 'admin@hindiusa.org', password: 'Password@123', label: 'HindiUSA' },
-  { role: 'Teacher', orgSlug: 'hindiusa', email: 'anjali@hindiusa.org', password: 'Password@123', label: 'Hindi Reading' },
-  { role: 'Student', orgSlug: 'hindiusa', email: 'aanya@student.hindiusa.org', password: 'Password@123', label: 'Roll: HU-001' },
   { role: 'Teacher', orgSlug: 'green-valley', email: 'sarah@greenvalley.edu', password: 'Password@123', label: 'Mathematics' },
 ];
 
