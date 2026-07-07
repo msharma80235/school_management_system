@@ -7,12 +7,14 @@ interface Message {
   text: string;
   steps?: Step[];
   suggestions?: string[];
+  source?: string;
 }
 
 const STEP_LABELS: Record<string, string> = {
   sanitize: 'Sanitize input',
   security_filter: 'Security filter',
   scope_check: 'Project-scope check',
+  ai_agent: 'Local AI agent',
   knowledge_lookup: 'Knowledge lookup',
   answer_redaction: 'Answer redaction',
 };
@@ -53,6 +55,7 @@ export default function ChatWidget() {
         text: r.data.answer,
         steps: r.data.steps,
         suggestions: r.data.suggestions,
+        source: r.data.source,
       }]);
     } catch {
       setMessages((m) => [...m, { from: 'agent', text: 'Something went wrong — please try again.' }]);
@@ -79,7 +82,7 @@ export default function ChatWidget() {
         <div className="fixed bottom-24 right-6 z-40 w-96 max-w-[calc(100vw-3rem)] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden" style={{ height: '520px' }}>
           <div className="px-4 py-3 bg-indigo-600 text-white">
             <p className="font-semibold text-sm">Education Hub Help</p>
-            <p className="text-[11px] text-indigo-200">Rule-based assistant · project questions only · no AI</p>
+            <p className="text-[11px] text-indigo-200">Project questions only · safety-screened pipeline</p>
           </div>
 
           <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-gray-50">
@@ -92,6 +95,10 @@ export default function ChatWidget() {
                     {m.text}
                   </div>
                 </div>
+
+                {m.from === 'agent' && m.source === 'ai_agent' && (
+                  <p className="text-[10px] text-violet-500 mt-0.5 ml-1">answered by local AI agent · safety-screened</p>
+                )}
 
                 {/* Pipeline steps executed for this answer */}
                 {m.steps && (

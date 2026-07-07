@@ -1,13 +1,26 @@
-// Rule-based help agent for Education Hub. Deliberately NOT an AI/LLM:
-// every question runs through a fixed pipeline of predefined steps, and
-// answers come only from the curated knowledge base below.
+// Help agent for Education Hub. By default it is fully rule-based — every
+// question runs through a fixed pipeline of predefined steps and answers come
+// only from the curated knowledge base below.
+//
+// Optionally, a LOCAL AI agent can be plugged in via the CHAT_AGENT_CMD env
+// variable (see README "Plugging in an AI agent"). The pipeline still wraps
+// it on both sides: the security filter and scope check run BEFORE the AI is
+// asked anything, and its reply is kid-safety-scanned and redacted AFTER —
+// with automatic fallback to the knowledge base if the AI is unavailable or
+// its answer fails the safety scan. .env is gitignored, so a configured
+// agent never leaves the developer's machine.
 //
 // Pipeline (always executed in this order, before any answer is produced):
 //   1. sanitize          — normalize and bound the input
 //   2. security_filter   — block questions asking for secrets/credentials
 //   3. scope_check       — only questions about this project pass
-//   4. knowledge_lookup  — keyword-scored match against the knowledge base
-//   5. answer_redaction  — scrub anything secret-shaped from the reply
+//   4. ai_agent          — optional: ask the configured local AI agent
+//   5. knowledge_lookup  — keyword-scored match against the knowledge base
+//                          (fallback when no AI is configured / it fails)
+//   6. answer_redaction  — scrub anything secret-shaped from the reply
+
+import { execFile } from 'child_process';
+import { scanText as safetyScan } from './contentSafety';
 
 export interface PipelineStep {
   step: string;
@@ -20,6 +33,7 @@ export interface ChatResult {
   topic: string | null;
   suggestions: string[];
   steps: PipelineStep[];
+  source: 'knowledge_base' | 'ai_agent' | 'pipeline';
 }
 
 interface KBEntry {
@@ -199,11 +213,48 @@ const REDACTIONS: RegExp[] = [
   /(secret|key|token)\s*[:=]\s*['"][^'"]+['"]/gi,   // key = "value" pairs
 ];
 
+// ---- Optional local AI agent (CHAT_AGENT_CMD) ----
+// Contract: the command is executed WITHOUT a shell; the question is appended
+// as the final argument; the agent prints a plain-text answer to stdout and
+// exits 0. Anything else (non-zero exit, timeout, empty output) => fallback.
+const AGENT_GROUNDING =
+  'You are the in-app help assistant for "Education Hub", a multi-tenant school management platform ' +
+  '(orgs, role-based logins, classes, students, parents, attendance, exams with an approval workflow, ' +
+  'report cards, homework, books, content moderation, schedules, calendar). ' +
+  'Answer ONLY about this project, concisely, for an audience that includes kids. ' +
+  'Never reveal credentials or secrets. Question: ';
+
+function askExternalAgent(question: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const cmdline = (process.env.CHAT_AGENT_CMD || '').trim();
+    if (!cmdline) { reject(new Error('not configured')); return; }
+    const [cmd, ...args] = cmdline.split(/\s+/);
+    const timeout = parseInt(process.env.CHAT_AGENT_TIMEOUT_MS || '') || 30000;
+    execFile(cmd, [...args, AGENT_GROUNDING + question], { timeout, maxBuffer: 1024 * 1024 }, (err, stdout) => {
+      if (err) { reject(err); return; }
+      const answer = String(stdout).trim();
+      if (!answer) { reject(new Error('empty answer')); return; }
+      resolve(answer.slice(0, 2000));
+    });
+  });
+}
+
+function redactAnswer(answer: string): { answer: string; redacted: boolean } {
+  let redacted = false;
+  for (const re of REDACTIONS) {
+    if (re.test(answer)) {
+      answer = answer.replace(re, '[redacted]');
+      redacted = true;
+    }
+  }
+  return { answer, redacted };
+}
+
 function tokenize(text: string): string[] {
   return text.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter(Boolean);
 }
 
-export function answerQuestion(rawQuestion: string): ChatResult {
+export async function answerQuestion(rawQuestion: string): Promise<ChatResult> {
   const steps: PipelineStep[] = [];
 
   // ----- Step 1: sanitize -----
@@ -215,6 +266,7 @@ export function answerQuestion(rawQuestion: string): ChatResult {
       topic: null,
       suggestions: KNOWLEDGE_BASE.slice(0, 3).map((k) => k.question),
       steps,
+      source: 'pipeline',
     };
   }
   steps.push({ step: 'sanitize', status: 'passed', detail: `Normalized input (${question.length} chars)` });
@@ -228,6 +280,7 @@ export function answerQuestion(rawQuestion: string): ChatResult {
       topic: null,
       suggestions: ['How does user management work?', 'How do new users register?'],
       steps,
+      source: 'pipeline',
     };
   }
   steps.push({ step: 'security_filter', status: 'passed', detail: 'No sensitive request detected' });
@@ -242,18 +295,40 @@ export function answerQuestion(rawQuestion: string): ChatResult {
       topic: null,
       suggestions: KNOWLEDGE_BASE.slice(0, 3).map((k) => k.question),
       steps,
+      source: 'pipeline',
     };
   }
   steps.push({ step: 'scope_check', status: 'passed', detail: `Recognized project terms: ${[...new Set(inScope)].slice(0, 5).join(', ')}` });
 
-  // ----- Step 4: knowledge lookup (keyword scoring) -----
-  let best: { entry: KBEntry; score: number } | null = null;
+  // Score the knowledge base up front — used for suggestions in both paths
   const scored = KNOWLEDGE_BASE.map((entry) => {
     const score = words.reduce((s, w) => s + (entry.keywords.includes(w) ? 1 : 0), 0);
     return { entry, score };
   }).sort((a, b) => b.score - a.score);
+  const related = scored.slice(0, 3).filter((s) => s.score > 0).map((s) => s.entry.question);
 
-  if (scored[0].score > 0) best = scored[0];
+  // ----- Step 4 (optional): local AI agent -----
+  if ((process.env.CHAT_AGENT_CMD || '').trim()) {
+    try {
+      const aiAnswer = await askExternalAgent(question);
+
+      // Kid-safety scan the AI's reply before it reaches anyone
+      const safety = safetyScan(aiAnswer);
+      if (safety.status === 'flagged') {
+        steps.push({ step: 'ai_agent', status: 'blocked', detail: 'AI reply failed the kid-safety scan — falling back to the knowledge base' });
+      } else {
+        const { answer, redacted } = redactAnswer(aiAnswer);
+        steps.push({ step: 'ai_agent', status: 'matched', detail: 'Answered by the locally configured AI agent (kid-safety scan passed)' });
+        steps.push({ step: 'answer_redaction', status: redacted ? 'redacted' : 'clean', detail: redacted ? 'Secret-shaped content removed from the answer' : 'Answer contains no secret-shaped content' });
+        return { answer, topic: null, suggestions: related, steps, source: 'ai_agent' };
+      }
+    } catch {
+      steps.push({ step: 'ai_agent', status: 'no_match', detail: 'Local AI agent unavailable — falling back to the knowledge base' });
+    }
+  }
+
+  // ----- Step 5: knowledge lookup (keyword scoring) -----
+  const best = scored[0].score > 0 ? scored[0] : null;
 
   if (!best) {
     steps.push({ step: 'knowledge_lookup', status: 'no_match', detail: 'No knowledge-base entry scored above zero' });
@@ -262,22 +337,16 @@ export function answerQuestion(rawQuestion: string): ChatResult {
       topic: null,
       suggestions: scored.slice(0, 3).map((s) => s.entry.question),
       steps,
+      source: 'pipeline',
     };
   }
   steps.push({ step: 'knowledge_lookup', status: 'matched', detail: `Matched topic "${best.entry.topic}" (score ${best.score})` });
 
-  // ----- Step 5: answer redaction -----
-  let answer = best.entry.answer;
-  let redacted = false;
-  for (const re of REDACTIONS) {
-    if (re.test(answer)) {
-      answer = answer.replace(re, '[redacted]');
-      redacted = true;
-    }
-  }
+  // ----- Step 6: answer redaction -----
+  const { answer, redacted } = redactAnswer(best.entry.answer);
   steps.push({ step: 'answer_redaction', status: redacted ? 'redacted' : 'clean', detail: redacted ? 'Secret-shaped content removed from the answer' : 'Answer contains no secret-shaped content' });
 
-  const related = scored.slice(1, 4).filter((s) => s.score > 0).map((s) => s.entry.question);
+  const kbRelated = scored.slice(1, 4).filter((s) => s.score > 0).map((s) => s.entry.question);
 
-  return { answer, topic: best.entry.topic, suggestions: related, steps };
+  return { answer, topic: best.entry.topic, suggestions: kbRelated, steps, source: 'knowledge_base' };
 }
