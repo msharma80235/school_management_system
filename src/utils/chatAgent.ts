@@ -124,6 +124,12 @@ const KNOWLEDGE_BASE: KBEntry[] = [
     answer: 'Books are managed per subject/class (including custom categories) on the Books page, with optional PDF or scanned copies (up to 25MB). Books uploaded by non-moderators need moderator approval before others can see them or attach them to homework. Students and parents see their class\'s approved books.',
   },
   {
+    topic: 'content_safety',
+    keywords: ['safety', 'inappropriate', 'adult', 'profanity', 'vulgar', 'scan', 'blocked', 'flag', 'flagged', 'kids'],
+    question: 'How is inappropriate content handled?',
+    answer: 'Two layers protect students: (1) every upload is scanned before it is accepted — files, titles, or exam questions containing adult content or profanity are rejected outright and never enter the system; (2) the admin-only Content Safety page re-scans everything already in the org, flags issues by category, queues images for manual review, and lets admins mark items safe.',
+  },
+  {
     topic: 'moderation',
     keywords: ['moderation', 'moderator', 'approve', 'content', 'queue', 'pending', 'review'],
     question: 'What is content moderation?',
@@ -198,7 +204,8 @@ const PROJECT_VOCAB = new Set([
   'class', 'classes', 'section', 'grade', 'level', 'subject', 'subjects',
   'exam', 'exams', 'quiz', 'marks', 'marksheet', 'test', 'paper', 'question', 'approval', 'approve', 'grading',
   'report', 'card', 'cards', 'attendance', 'homework', 'book', 'books', 'library',
-  'document', 'documents', 'notice', 'upload', 'moderation', 'pending',
+  'document', 'documents', 'notice', 'upload', 'uploads', 'uploaded', 'moderation', 'pending',
+  'safety', 'inappropriate', 'adult', 'profanity', 'vulgar', 'scan', 'scanned', 'flag', 'flagged', 'blocked', 'kids', 'content',
   'schedule', 'schedules', 'timetable', 'period', 'calendar', 'holiday', 'holidays', 'duty', 'meeting',
   'photo', 'logo', 'pdf', 'print', 'download', 'dashboard', 'page', 'feature', 'features', 'flow',
   'tech', 'stack', 'run', 'start', 'setup', 'install', 'port', 'backend', 'frontend', 'database',
