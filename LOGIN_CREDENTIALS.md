@@ -38,6 +38,8 @@ Admin assigns any number of **moderators** from the Users page (Users → "Make 
 
 ## Content Safety
 
+**Uploads are gated at the door**: try uploading a document or book with adult/profane content (or such words in a title) — the system scans it first, rejects the upload with the matched categories, and deletes the file. Review-level content (e.g., violence terms in a history lesson) is allowed through and surfaces on the scan page instead.
+
 Admin sidebar → **Content Safety** → "Scan All Content" inventories every upload (books, documents, exam papers, generated questions, photos, logos) and checks text against kid-safety wordlists. Sample data: **"Story Draft (safety test)"** is a planted document that gets **flagged** (adult/profanity terms) and **"History Notes 1857"** lands in **needs review** (violence terms in a legitimate history context — marked safe as a demo). Images always need manual review.
 
 ---

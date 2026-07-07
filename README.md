@@ -97,6 +97,7 @@ See **[ROLES_AND_DUTIES.md](ROLES_AND_DUTIES.md)** for the full duties document 
 - Teachers and staff can submit school documents (subject to approval); admins/moderators publish instantly.
 
 ### Content Safety
+- **Upload-time gate**: every upload is scanned *before* it is accepted. Content with adult material or profanity — in the file text, title, description, or exam questions — is **rejected outright**: the file is deleted and the uploader gets a clear error naming the categories. Blocked content never enters the system. Covers documents, books (metadata + file copies), exam file imports, and exam question payloads.
 - Admin-only **Content Safety** page inventories every upload in the org (book files, documents, exam papers, generated exam questions, student photos, logos) and scans all readable text against rule-based wordlists.
 - Items with adult content or profanity are **flagged**; violence/substance mentions and images (which can't be auto-analyzed) go to **needs manual review**; the rest are clean. Admins can mark items safe — decisions survive re-scans.
 

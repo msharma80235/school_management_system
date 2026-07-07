@@ -6,6 +6,7 @@ import PDFDocument from 'pdfkit';
 import prisma from '../prisma/client';
 import { canAccessClass } from '../utils/classAccess';
 import { generateQuiz, generateSubjective, GeneratedQuestion } from '../utils/examGenerator';
+import { scanText } from '../utils/contentSafety';
 
 export async function createExam(req: Request, res: Response): Promise<void> {
   try {
@@ -23,6 +24,14 @@ export async function createExam(req: Request, res: Response): Promise<void> {
     // With generated questions the total is the sum of question marks;
     // the exam contains only the questions, never the source document.
     const hasQuestions = Array.isArray(questions) && questions.length > 0;
+
+    const examText = [name, ...(hasQuestions ? questions.map((q: GeneratedQuestion) => `${q.question_text} ${(q.options || []).join(' ')}`) : [])].join('\n');
+    const gate = scanText(examText);
+    if (gate.status === 'flagged') {
+      res.status(400).json({ error: 'Blocked: the exam name or questions contain content inappropriate for kids and students.' });
+      return;
+    }
+
     const total = hasQuestions
       ? questions.reduce((sum: number, q: GeneratedQuestion) => sum + (q.marks || 1), 0)
       : parseInt(max_marks);
@@ -257,6 +266,15 @@ export async function importExamFile(req: Request, res: Response): Promise<void>
       pages = parsed.pages || 0;
     } catch {
       // unreadable/scanned PDF — keep the file, suggest from the filename
+    }
+
+    // Safety gate: a flagged file is deleted and never usable for exams
+    const uploadScan = scanText(`${req.file.originalname}\n${text}`);
+    if (uploadScan.status === 'flagged') {
+      fs.unlink(path.resolve('uploads', req.file.filename), () => {});
+      const cats = [...new Set(uploadScan.matches.filter((m) => ['adult', 'profanity'].includes(m.category)).map((m) => m.category))];
+      res.status(400).json({ error: `Upload blocked: this file contains content inappropriate for kids and students (${cats.join(', ')}). It cannot be used to create an exam.` });
+      return;
     }
 
     const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
