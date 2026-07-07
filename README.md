@@ -156,6 +156,25 @@ cd client && npm run dev    # frontend dev server (port 5173)
 cd client && npx vite build # production build
 ```
 
+## Plugging an AI Agent into the Help Chat (optional, local)
+
+The in-app help chat is rule-based by default (curated knowledge base, no AI). Any developer can optionally plug in **their own AI agent** — a local LLM, a CLI wrapper around an API, anything — via one env variable in `.env` (which is gitignored, so your agent config never leaves your machine):
+
+```bash
+# .env
+CHAT_AGENT_CMD=python3 /path/to/your/agent.py --ask
+CHAT_AGENT_TIMEOUT_MS=30000   # optional, default 30s
+```
+
+**The contract is deliberately tiny** so any agent works:
+- The command is executed **without a shell**; the user's question (prefixed with a short project-grounding instruction) is appended as the **final argument**.
+- Your agent prints a **plain-text answer to stdout** and exits `0`.
+- Non-zero exit, timeout, or empty output → the chat silently falls back to the built-in knowledge base.
+
+Example agents: an [Ollama](https://ollama.com)-backed script (`python3 chat_agent.py --ask "<question>"` hitting `http://localhost:11434`), a shell script calling any LLM API, or any executable meeting the contract.
+
+**The safety pipeline still wraps your agent on both sides.** Before the AI sees anything: input sanitization, the secrets/credentials filter, and the project-scope gate. After it answers: the reply is scanned with the same kid-safety wordlists used by Content Safety (a flagged reply is discarded and the knowledge base answers instead) and secret-shaped content is redacted. Answers from an AI agent are labeled "answered by local AI agent · safety-screened" in the chat widget, with the full step trace visible per message.
+
 ## Note for Developers
 
 > ⚠️ **Before deploying to production:** copy `.env.example` to `.env` and set a strong, random `JWT_SECRET`. If the variable is unset, `src/utils/jwt.ts` currently falls back to a hardcoded `'default-secret'` — acceptable for local development only. For production, replace that fallback so the app **fails to start** without a real secret instead of silently signing tokens with a known value.
