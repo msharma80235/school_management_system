@@ -1,11 +1,12 @@
 import { Router } from 'express';
 import { registerOrganization, getOrganization, updateOrganization } from '../controllers/org.controller';
 import { authenticate, authorize } from '../middleware/auth';
+import { authRateLimit } from '../middleware/rateLimit';
 
 const router = Router();
 
 // Public
-router.post('/register', registerOrganization);
+router.post('/register', authRateLimit, registerOrganization);
 
 // Authenticated
 router.get('/me', authenticate, getOrganization);

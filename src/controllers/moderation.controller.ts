@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../prisma/client';
+import { audit } from '../utils/audit';
 
 const bookInclude = {
   subject: { select: { id: true, name: true, code: true } },
@@ -89,6 +90,12 @@ export async function reviewBook(req: Request, res: Response): Promise<void> {
       include: bookInclude,
     });
 
+    await audit(req, `content.book_${decision.status}`, {
+      targetType: 'book', targetId: book.id,
+      summary: `${decision.status === 'approved' ? 'Approved' : 'Rejected'} book "${book.title}"`,
+      metadata: decision.note ? { note: decision.note } : undefined,
+    });
+
     res.json({ message: `"${book.title}" ${decision.status}`, book });
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
@@ -117,6 +124,12 @@ export async function reviewDocument(req: Request, res: Response): Promise<void>
         review_note: decision.note,
       },
       include: docInclude,
+    });
+
+    await audit(req, `content.document_${decision.status}`, {
+      targetType: 'document', targetId: document.id,
+      summary: `${decision.status === 'approved' ? 'Approved' : 'Rejected'} document "${document.title}"`,
+      metadata: decision.note ? { note: decision.note } : undefined,
     });
 
     res.json({ message: `"${document.title}" ${decision.status}`, document });

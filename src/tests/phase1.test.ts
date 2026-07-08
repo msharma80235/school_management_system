@@ -3,7 +3,7 @@ import app from '../app';
 import prisma from '../prisma/client';
 import { hashPassword } from '../utils/password';
 import { generateToken, verifyToken } from '../utils/jwt';
-import { createTestAdmin, createTestTeacher, cleanDatabase } from './helpers';
+import { createTestAdmin, createTestTeacher, cleanDatabase, TEST_ORG_SLUG } from './helpers';
 
 beforeEach(async () => {
   await cleanDatabase();
@@ -40,7 +40,7 @@ describe('Auth - Login', () => {
 
     const res = await request(app)
       .post('/api/auth/login')
-      .send({ email: 'admin@test.com', password: 'Admin@123' });
+      .send({ email: 'admin@test.com', password: 'Admin@123', org_slug: TEST_ORG_SLUG });
 
     expect(res.status).toBe(200);
     expect(res.body.token).toBeDefined();
@@ -56,7 +56,7 @@ describe('Auth - Login', () => {
 
     const res = await request(app)
       .post('/api/auth/login')
-      .send({ email: 'admin@test.com', password: 'wrongpassword' });
+      .send({ email: 'admin@test.com', password: 'wrongpassword', org_slug: TEST_ORG_SLUG });
 
     expect(res.status).toBe(401);
     expect(res.body.error).toBe('Invalid email or password');
@@ -187,7 +187,7 @@ describe('Teacher Status', () => {
     // Try to login as deactivated teacher
     const loginRes = await request(app)
       .post('/api/auth/login')
-      .send({ email: 'deactivated@school.com', password: 'Teacher@123' });
+      .send({ email: 'deactivated@school.com', password: 'Teacher@123', org_slug: TEST_ORG_SLUG });
 
     expect(loginRes.status).toBe(401);
     expect(loginRes.body.error).toBe('Account is deactivated');
@@ -213,7 +213,7 @@ describe('Password Management', () => {
     // Verify new password works
     const loginRes = await request(app)
       .post('/api/auth/login')
-      .send({ email: 'admin@test.com', password: 'NewAdmin@456' });
+      .send({ email: 'admin@test.com', password: 'NewAdmin@456', org_slug: TEST_ORG_SLUG });
 
     expect(loginRes.status).toBe(200);
   });
