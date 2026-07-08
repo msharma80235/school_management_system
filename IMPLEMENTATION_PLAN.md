@@ -13,7 +13,7 @@ This plan sequences the work that makes Education Hub adoptable and then defensi
 | Phase | Status |
 |-------|--------|
 | 0 — Foundations & Hardening | ✅ done (2026-07-08) |
-| 1 — Communication & Notifications | ⬜ not started |
+| 1 — Communication & Notifications | ✅ done (2026-07-08) |
 | 2 — Learning Loop | ⬜ not started |
 | 3 — Admissions & Enrollment | ⬜ not started |
 | 4 — Analytics & Insight | ⬜ not started |
@@ -54,22 +54,34 @@ This plan sequences the work that makes Education Hub adoptable and then defensi
 
 ---
 
-## Phase 1 — Communication & Notifications
+## Phase 1 — Communication & Notifications — ✅ DONE (2026-07-08)
 *Build this first among features: nearly everything else (approvals, absences, later fee reminders) has something to announce.*
 
 - **Goal:** the platform can reach users instead of waiting for them to log in.
 - **Deliverables:**
-  - Event-triggered **email** via nodemailer + SMTP/SES (marks approved, document published, invitation sent, absence recorded, moderation decision).
-  - **In-app inbox/notifications** per role (bell + notifications page).
-  - **SMS as a pluggable adapter** mirroring the AI-agent pattern: env-configured command/endpoint, optional and swappable, off by default.
-  - Per-user notification preferences (channel + category opt-out).
-- **Data model:** `Notification` (user_id, org_id, type, title, body, read_at, link), `NotificationPreference`; optional `Message`/`MessageThread` if two-way messaging is in scope (recommend deferring two-way to keep Phase 1 tight).
-- **Backend:** `notification.controller` + routes; a `notify()` service invoked from existing controllers at key events; email transport util; SMS adapter util (env `SMS_CMD`, gitignored config, same contract discipline as `CHAT_AGENT_CMD`).
-- **Frontend:** notification bell + dropdown, Notifications page, preference settings.
+  - ✅ Event-triggered **email** via nodemailer + SMTP (marks approved, invitation sent, moderation decision). *(Attendance-absence + document-published-to-audience events deferred — see follow-ups.)*
+  - ✅ **In-app notifications** per role (bell + dropdown on every dashboard).
+  - ✅ **SMS as a pluggable adapter** mirroring the AI-agent pattern (`SMS_CMD`, env-configured, off by default).
+  - ✅ Per-user notification preferences (channel × category opt-out).
+- **Data model:** `Notification` (user_id, org_id, category, title, body, link, read_at), `NotificationPreference` (user × category × {in_app,email,sms}); plus `User.phone` for the SMS adapter. Two-way messaging deferred (kept Phase 1 tight). ✅ migrated (`20260708204115_add_notifications`).
+- **Backend:** `notification.controller` + routes; a `notify()`/`notifyMany()` service invoked at key events; `email.ts` transport; `smsAdapter.ts` (env `SMS_CMD`, gitignored config, same contract discipline as `CHAT_AGENT_CMD`). ✅
+- **Frontend:** notification bell + dropdown with inline preference settings (single self-contained component in `Layout`, so it works for all roles without touching route blocks). ✅
 - **Reuses:** the pluggable-local-adapter pattern already proven by the AI chat; `.env` discipline; role guards.
 - **Dependencies:** Phase 0 audit log (nice to have, not blocking).
 - **Effort:** L.
-- **Exit criterion:** a parent receives an email + in-app notification when their child's marks are approved, and can opt out of a category.
+- **Exit criterion:** a parent receives an email + in-app notification when their child's marks are approved, and can opt out of a category. ✅ **met** (covered by an integration test).
+
+> **Progress log**
+> - 2026-07-08: **Completed Phase 1.**
+>   - **Data + service:** `Notification` + `NotificationPreference` models (+ `User.phone`) and migration; `notify()`/`notifyMany()` respect per-user, per-category channel prefs (defaults: in-app + email on, SMS off), write the in-app row synchronously and fire email/SMS without blocking the request.
+>   - **Channels:** `email.ts` (nodemailer; SMTP via `SMTP_URL` or discrete host settings; no-op + dev log when unconfigured; never throws) and `smsAdapter.ts` (pluggable `SMS_CMD`, recipient+message as final args, off by default).
+>   - **API:** `GET /api/notifications`, `/unread-count`, `POST /read-all`, `PATCH /:id/read` (user-scoped), `GET`/`PUT /preferences`.
+>   - **Events wired:** marks approved → students + parents (`approveMarks` and `bulkApprove`); book/document approve/reject → uploader; invitation-with-email → join-link email to the invitee.
+>   - **Frontend:** `NotificationBell` (fixed top-right in `Layout`): unread badge with 30s polling, dropdown list (click marks read + navigates to the item's link), mark-all-read, and an inline per-category × per-channel preferences grid.
+>   - **Docs:** `.env.example` (APP_URL, SMTP_*, MAIL_FROM, SMS_CMD) and a README "Notifications" section.
+>   - **Tests green:** `npm test` → **3 suites, 34 passing** (+7 Phase 1: notify defaults/opt-out, endpoint CRUD incl. cross-user guard, preferences, and the marks-approval → parent+student integration with an opt-out case). Isolated test-DB teardown (`cleanDatabase`) extended to all tables. `cd client && npx vite build` succeeds.
+>
+> **Follow-ups deferred to later work (not blockers):** attendance-absence → parents and document-published → audience events not yet wired; no digest/batching (each event sends immediately); no UI to edit `User.phone` yet (settable via API/seed); two-way messaging out of scope; standalone full-page notifications view could complement the dropdown.
 
 ---
 

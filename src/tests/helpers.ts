@@ -39,8 +39,33 @@ export async function createTestTeacher(overrides: Record<string, any> = {}) {
 }
 
 export async function cleanDatabase() {
-  // Order matters: children before parents (users reference organizations).
+  // SQLite enforces foreign keys, so delete children before parents.
+  await prisma.notification.deleteMany();
+  await prisma.notificationPreference.deleteMany();
   await prisma.auditLog.deleteMany();
+  await prisma.mark.deleteMany();
+  await prisma.examQuestion.deleteMany();
+  await prisma.exam.deleteMany();
+  await prisma.attendance.deleteMany();
+  await prisma.volunteerAttendance.deleteMany();
+  await prisma.parentStudent.deleteMany();
+  await prisma.invitation.deleteMany();
+  await prisma.classScheduleSlot.deleteMany();
+  await prisma.teacherScheduleSlot.deleteMany();
+  await prisma.classSubject.deleteMany();
+  await prisma.classTeacher.deleteMany();
+  await prisma.staffAssignment.deleteMany();
+  await prisma.book.deleteMany();
+  await prisma.homework.deleteMany();
+  await prisma.schoolDocument.deleteMany();
+  await prisma.contentScanResult.deleteMany();
+  await prisma.reportCardConfig.deleteMany();
+  await prisma.rolesDocument.deleteMany();
+  await prisma.holiday.deleteMany();
+  await prisma.student.deleteMany();
+  await prisma.subject.deleteMany();
+  await prisma.gradeLevel.deleteMany();
+  await prisma.class.deleteMany();
   await prisma.user.deleteMany();
   await prisma.organization.deleteMany();
 }

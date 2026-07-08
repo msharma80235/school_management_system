@@ -176,6 +176,18 @@ Example agents: an [Ollama](https://ollama.com)-backed script (`python3 chat_age
 
 **The safety pipeline still wraps your agent on both sides.** Before the AI sees anything: input sanitization, the secrets/credentials filter, and the project-scope gate. After it answers: the reply is scanned with the same kid-safety wordlists used by Content Safety (a flagged reply is discarded and the knowledge base answers instead) and secret-shaped content is redacted. Answers from an AI agent are labeled "answered by local AI agent · safety-screened" in the chat widget, with the full step trace visible per message.
 
+## Notifications (email · in-app · SMS)
+
+Users are kept informed instead of having to log in and check (Phase 1 of [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)).
+
+- **In-app** — a notification bell (top-right, on every role's dashboard) shows unread count, a dropdown of recent items (click to open the related page), "mark all read", and an inline **per-category × per-channel preferences** panel. Always on.
+- **Email** — sent via SMTP when configured (`SMTP_URL` or `SMTP_HOST/PORT/USER/PASS`, plus `MAIL_FROM`). With nothing configured, email is skipped (logged in dev) and never blocks anything. Uses `nodemailer`.
+- **SMS** — an optional **pluggable adapter** mirroring the help-chat AI contract: point `SMS_CMD` at any executable; the recipient and message are appended as its final two arguments. Off by default; config lives in `.env` (gitignored) so provider credentials never leave your machine.
+
+Each user controls delivery per category (**marks, moderation, attendance, invitation, general**) and per channel from the bell's settings. A missing preference means defaults (in-app + email on, SMS off).
+
+**Events wired so far:** marks approved → the affected students **and their parents**; content (book/document) approved or rejected → the uploader; invitation created with an email → the invitee gets a join-link email. Delivery is best-effort and fired after the request responds, so notifications never slow the underlying action. See all env vars in `.env.example`.
+
 ## Note for Developers
 
 > ⚠️ **Before deploying to production:** copy `.env.example` to `.env` and set a strong, random `JWT_SECRET`. In production (`NODE_ENV=production`) the app now **refuses to start** if `JWT_SECRET` is missing or left as the known `'default-secret'` value (`src/utils/jwt.ts`), so tokens can never be signed with a guessable key. Outside production a convenience fallback keeps local dev and the test suite running without configuration.

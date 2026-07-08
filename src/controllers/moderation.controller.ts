@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import prisma from '../prisma/client';
 import { audit } from '../utils/audit';
+import { notify } from '../utils/notify';
 
 const bookInclude = {
   subject: { select: { id: true, name: true, code: true } },
@@ -96,6 +97,17 @@ export async function reviewBook(req: Request, res: Response): Promise<void> {
       metadata: decision.note ? { note: decision.note } : undefined,
     });
 
+    if (existing.uploaded_by && existing.uploaded_by !== req.user!.userId) {
+      await notify({
+        userId: existing.uploaded_by, orgId: req.user!.orgId, category: 'moderation',
+        title: `Book ${decision.status}: "${book.title}"`,
+        body: decision.status === 'approved'
+          ? `Your book "${book.title}" was approved and is now published.`
+          : `Your book "${book.title}" was rejected.${decision.note ? ` Note: ${decision.note}` : ''}`,
+        link: '/teacher/books',
+      });
+    }
+
     res.json({ message: `"${book.title}" ${decision.status}`, book });
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
@@ -131,6 +143,17 @@ export async function reviewDocument(req: Request, res: Response): Promise<void>
       summary: `${decision.status === 'approved' ? 'Approved' : 'Rejected'} document "${document.title}"`,
       metadata: decision.note ? { note: decision.note } : undefined,
     });
+
+    if (existing.uploaded_by && existing.uploaded_by !== req.user!.userId) {
+      await notify({
+        userId: existing.uploaded_by, orgId: req.user!.orgId, category: 'moderation',
+        title: `Document ${decision.status}: "${document.title}"`,
+        body: decision.status === 'approved'
+          ? `Your document "${document.title}" was approved and is now visible to its audience.`
+          : `Your document "${document.title}" was rejected.${decision.note ? ` Note: ${decision.note}` : ''}`,
+        link: '/teacher/documents',
+      });
+    }
 
     res.json({ message: `"${document.title}" ${decision.status}`, document });
   } catch (error) {
