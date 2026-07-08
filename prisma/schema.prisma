@@ -50,6 +50,7 @@ model User {
   password   String
   role       String   @default("teacher")
   subject    String?
+  phone      String?  // optional; used by the SMS notification adapter when configured
   is_active    Boolean  @default(true)
   is_locked    Boolean  @default(false)
   is_moderator Boolean  @default(false) // can approve content uploads (books, documents)
@@ -76,6 +77,8 @@ model User {
   documents_reviewed SchoolDocument[] @relation("DocReviewer")
   class_slots_teaching ClassScheduleSlot[] @relation("ClassSlotTeacher")
   teacher_schedule_slots TeacherScheduleSlot[] @relation("TeacherPersonalSlots")
+  notifications        Notification[]           @relation("UserNotifications")
+  notification_prefs   NotificationPreference[] @relation("UserNotificationPrefs")
 
   @@unique([email, org_id])
   @@map("users")
@@ -529,4 +532,38 @@ model AuditLog {
   @@index([org_id, created_at])
   @@index([actor_id])
   @@map("audit_logs")
+}
+
+// A single in-app notification for one user. Email/SMS delivery is handled at
+// send time (see src/utils/notify.ts) and not persisted here.
+model Notification {
+  id         String    @id @default(uuid())
+  user_id    String
+  user       User      @relation("UserNotifications", fields: [user_id], references: [id])
+  org_id     String?
+  category   String    // "marks" | "moderation" | "attendance" | "invitation" | "general"
+  title      String
+  body       String?
+  link       String?   // in-app route to open when clicked
+  read_at    DateTime?
+  created_at DateTime  @default(now())
+
+  @@index([user_id, read_at])
+  @@map("notifications")
+}
+
+// Per-user, per-category channel opt-outs. A missing row means "all defaults"
+// (in-app + email on, SMS off), so users only get rows once they change something.
+model NotificationPreference {
+  id         String   @id @default(uuid())
+  user_id    String
+  user       User     @relation("UserNotificationPrefs", fields: [user_id], references: [id])
+  category   String
+  in_app     Boolean  @default(true)
+  email      Boolean  @default(true)
+  sms        Boolean  @default(false)
+  updated_at DateTime @updatedAt
+
+  @@unique([user_id, category])
+  @@map("notification_preferences")
 }

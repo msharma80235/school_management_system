@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import prisma from '../prisma/client';
 import { hashPassword } from '../utils/password';
 import { generateToken } from '../utils/jwt';
+import { sendEmail } from '../utils/email';
 
 const INVITABLE_ROLES = ['teacher', 'student', 'parent', 'volunteer', 'staff'];
 const INVITE_VALID_DAYS = 7;
@@ -17,6 +18,7 @@ function makeCode(): string {
 const inviteInclude = {
   student: { select: { id: true, first_name: true, last_name: true, roll_number: true } },
   creator: { select: { id: true, name: true } },
+  org: { select: { name: true } },
 };
 
 function inviteState(inv: { status: string; expires_at: Date }): string {
@@ -67,6 +69,22 @@ export async function createInvite(req: Request, res: Response): Promise<void> {
     });
 
     res.status(201).json({ message: 'Invitation created', invite: { ...invite, state: 'pending' } });
+
+    // Email the invitee their join link when the invite is addressed to an email.
+    // Email-only (they have no account yet), best-effort, after the response.
+    if (invite.email) {
+      const appUrl = (process.env.APP_URL || 'http://localhost:5173').replace(/\/$/, '');
+      const joinUrl = `${appUrl}/join/${invite.code}`;
+      const orgName = invite.org?.name || 'your school';
+      sendEmail({
+        to: invite.email,
+        subject: `You're invited to join ${orgName} on Education Hub`,
+        text: `You've been invited to join ${orgName} as a ${invite.role}.\n\n`
+          + `Accept your invitation: ${joinUrl}\n`
+          + `Or enter this code at ${appUrl}/join : ${invite.code}\n\n`
+          + `This invitation expires in ${INVITE_VALID_DAYS} days.`,
+      }).catch((e) => console.error('invite email:', e));
+    }
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
   }

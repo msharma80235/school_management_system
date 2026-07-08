@@ -7,6 +7,40 @@ import prisma from '../prisma/client';
 import { canAccessClass } from '../utils/classAccess';
 import { generateQuiz, generateSubjective, GeneratedQuestion } from '../utils/examGenerator';
 import { scanText } from '../utils/contentSafety';
+import { notify } from '../utils/notify';
+
+// On marks approval, tell the affected students and their parents. Runs after
+// the response is sent, so a slow notify never delays the admin's action.
+async function notifyMarksApproved(examId: string, examName: string, orgId: string | null | undefined): Promise<void> {
+  const marks = await prisma.mark.findMany({ where: { exam_id: examId }, select: { student_id: true } });
+  const studentIds = [...new Set(marks.map((m) => m.student_id))];
+  if (studentIds.length === 0) return;
+
+  const students = await prisma.student.findMany({
+    where: { id: { in: studentIds } },
+    select: { id: true, first_name: true, last_name: true, user_id: true, parent_links: { select: { parent_id: true } } },
+  });
+
+  await Promise.all(students.map(async (s) => {
+    const childName = `${s.first_name} ${s.last_name}`.trim();
+    // Notify the student (on their own account).
+    if (s.user_id) {
+      await notify({
+        userId: s.user_id, orgId, category: 'marks',
+        title: `Marks published: ${examName}`,
+        body: `Your marks for "${examName}" have been approved and are now on your report card.`,
+        link: '/student/dashboard',
+      });
+    }
+    // Notify each linked parent.
+    await Promise.all(s.parent_links.map((p) => notify({
+      userId: p.parent_id, orgId, category: 'marks',
+      title: `Marks published: ${examName}`,
+      body: `${childName}'s marks for "${examName}" have been approved and are now on the report card.`,
+      link: '/parent/dashboard',
+    })));
+  }));
+}
 
 export async function createExam(req: Request, res: Response): Promise<void> {
   try {
@@ -417,6 +451,9 @@ export async function approveMarks(req: Request, res: Response): Promise<void> {
     });
 
     res.json({ message: 'Marks approved', exam: updated });
+
+    // Fire notifications after responding (best-effort).
+    notifyMarksApproved(updated.id, updated.name, req.user!.orgId).catch((e) => console.error('marks-approved notify:', e));
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -451,12 +488,21 @@ export async function bulkApprove(req: Request, res: Response): Promise<void> {
     const { class_id } = req.body;
     const orgId = req.user!.orgId;
 
+    // Capture which exams are about to be approved so we can notify for each.
+    const toApprove = await prisma.exam.findMany({
+      where: { class_id, org_id: orgId, approval_status: 'pending' },
+      select: { id: true, name: true },
+    });
+
     const result = await prisma.exam.updateMany({
       where: { class_id, org_id: orgId, approval_status: 'pending' },
       data: { approval_status: 'approved', approved_at: new Date() },
     });
 
     res.json({ message: `${result.count} exams approved`, count: result.count });
+
+    Promise.all(toApprove.map((e) => notifyMarksApproved(e.id, e.name, orgId)))
+      .catch((err) => console.error('bulk marks-approved notify:', err));
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
   }

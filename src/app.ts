@@ -31,6 +31,7 @@ import teacherScheduleRoutes from './routes/teacherSchedule.routes';
 import chatRoutes from './routes/chat.routes';
 import contentSafetyRoutes from './routes/contentSafety.routes';
 import auditRoutes from './routes/audit.routes';
+import notificationRoutes from './routes/notification.routes';
 
 const app = express();
 
@@ -69,6 +70,7 @@ app.use('/api/teacher-schedules', teacherScheduleRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/content-safety', contentSafetyRoutes);
 app.use('/api/audit', auditRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' });
