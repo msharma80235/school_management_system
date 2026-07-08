@@ -44,7 +44,7 @@ async function notifyMarksApproved(examId: string, examName: string, orgId: stri
 
 export async function createExam(req: Request, res: Response): Promise<void> {
   try {
-    const { name, exam_type, term, class_id, subject_id, max_marks, exam_date, question_paper_path, exam_format, questions } = req.body;
+    const { name, exam_type, term, class_id, subject_id, max_marks, exam_date, question_paper_path, exam_format, questions, time_limit_min } = req.body;
     const orgId = req.user!.orgId;
 
     if (!name || !exam_type || !term || !class_id || !subject_id) {
@@ -78,6 +78,7 @@ export async function createExam(req: Request, res: Response): Promise<void> {
         exam_date: exam_date || null,
         question_paper_path: hasQuestions ? null : (question_paper_path || null),
         exam_format: hasQuestions ? (exam_format || 'quiz') : null,
+        time_limit_min: hasQuestions && exam_format === 'quiz' && time_limit_min ? parseInt(time_limit_min) : null,
         org_id: orgId,
         ...(hasQuestions && {
           questions: {

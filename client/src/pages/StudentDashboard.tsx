@@ -1,8 +1,18 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import HomeworkList from '../components/HomeworkList';
 import BookList from '../components/BookList';
+
+interface Quiz {
+  id: string;
+  name: string;
+  subject: { name: string; code: string };
+  time_limit_min: number | null;
+  question_count: number;
+  attempt: { submitted_at: string; score: number | null; max_score: number | null } | null;
+}
 
 interface StudentProfile {
   id: string;
@@ -41,14 +51,18 @@ export default function StudentDashboard() {
   const [year, setYear] = useState(new Date().getFullYear());
   const [homework, setHomework] = useState<any[]>([]);
   const [books, setBooks] = useState<any[]>([]);
+  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const loadHomework = () => api.get('/homework/my').then((res) => setHomework(res.data.homework)).catch(() => {});
 
   useEffect(() => {
     api.get('/student-account/my-profile')
       .then((res) => setProfile(res.data.student))
       .finally(() => setLoading(false));
-    api.get('/homework/my').then((res) => setHomework(res.data.homework)).catch(() => {});
+    loadHomework();
     api.get('/books/my').then((res) => setBooks(res.data.books)).catch(() => {});
+    api.get('/exams/my-quizzes').then((res) => setQuizzes(res.data.quizzes)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -133,10 +147,46 @@ export default function StudentDashboard() {
             </div>
           </div>
 
+          {/* Quizzes */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">My Quizzes</h2>
+            {quizzes.length === 0 ? (
+              <p className="text-gray-400 text-center py-6">No quizzes yet</p>
+            ) : (
+              <div className="space-y-2">
+                {quizzes.map((qz) => (
+                  <div key={qz.id} className="flex items-center justify-between border border-gray-200 rounded-lg p-4">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex px-2 py-0.5 rounded text-xs font-mono bg-indigo-50 text-indigo-700">{qz.subject.code}</span>
+                        <span className="font-medium text-gray-900">{qz.name}</span>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {qz.question_count} question{qz.question_count > 1 ? 's' : ''}
+                        {qz.time_limit_min ? ` • ${qz.time_limit_min} min` : ''}
+                      </p>
+                    </div>
+                    {qz.attempt ? (
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className="text-sm font-medium text-green-700">{qz.attempt.score}/{qz.attempt.max_score}</span>
+                        <Link to={`/student/quiz/${qz.id}`} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Review</Link>
+                      </div>
+                    ) : (
+                      <Link to={`/student/quiz/${qz.id}`}
+                        className="bg-indigo-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-indigo-700 transition shrink-0">
+                        Take quiz
+                      </Link>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Homework */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">My Homework</h2>
-            <HomeworkList homework={homework} />
+            <HomeworkList homework={homework} interactive onChange={loadHomework} />
           </div>
 
           {/* Books */}

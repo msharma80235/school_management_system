@@ -176,6 +176,15 @@ Example agents: an [Ollama](https://ollama.com)-backed script (`python3 chat_age
 
 **The safety pipeline still wraps your agent on both sides.** Before the AI sees anything: input sanitization, the secrets/credentials filter, and the project-scope gate. After it answers: the reply is scanned with the same kid-safety wordlists used by Content Safety (a flagged reply is discarded and the knowledge base answers instead) and secret-shaped content is redacted. Answers from an AI agent are labeled "answered by local AI agent · safety-screened" in the chat widget, with the full step trace visible per message.
 
+## Learning Loop (submissions & online quizzes)
+
+Closes the assign → do → grade → gradebook loop (Phase 2 of [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)).
+
+- **Assignment submissions** — students turn in work against a homework item (file and/or note) from their dashboard. Every upload passes the **same content-safety gate** as the rest of the app. Teachers see all submissions per homework and grade them inline (grade / out-of / feedback); the student and their parents are **notified** when it's graded. A graded submission is locked from further edits.
+- **Online quizzes** — a quiz-format exam (questions generated from a file, see below) becomes a **timed, student-facing quiz**. Objective questions (MCQ / true-false / fill-in-the-blank) are **auto-graded** against the answer key; the score is written back as a **Mark**, so it flows straight into the existing gradebook and report cards. Students see per-question results with the correct answers after submitting; teachers see every attempt. Correct answers are never sent to the browser before submission.
+
+Students take quizzes at **My Quizzes** on their dashboard; teachers manage submissions from the **Submissions** button on each homework card.
+
 ## Notifications (email · in-app · SMS)
 
 Users are kept informed instead of having to log in and check (Phase 1 of [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)).

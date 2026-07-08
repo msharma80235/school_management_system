@@ -13,6 +13,7 @@ import AttendancePage from './pages/AttendancePage';
 import TeacherDashboard from './pages/TeacherDashboard';
 import ParentDashboard from './pages/ParentDashboard';
 import StudentDashboard from './pages/StudentDashboard';
+import QuizTake from './pages/QuizTake';
 import Register from './pages/Register';
 import ParentLogin from './pages/ParentLogin';
 import SubjectManagement from './pages/SubjectManagement';
@@ -118,6 +119,7 @@ export default function App() {
             <ProtectedRoute role="student"><Layout /></ProtectedRoute>
           }>
             <Route path="dashboard" element={<StudentDashboard />} />
+            <Route path="quiz/:examId" element={<QuizTake />} />
             <Route path="documents" element={<SchoolDocuments />} />
             <Route path="calendar" element={<CalendarPage />} />
             <Route index element={<Navigate to="dashboard" replace />} />

@@ -14,7 +14,7 @@ This plan sequences the work that makes Education Hub adoptable and then defensi
 |-------|--------|
 | 0 — Foundations & Hardening | ✅ done (2026-07-08) |
 | 1 — Communication & Notifications | ✅ done (2026-07-08) |
-| 2 — Learning Loop | ⬜ not started |
+| 2 — Learning Loop | ✅ done (2026-07-08) |
 | 3 — Admissions & Enrollment | ⬜ not started |
 | 4 — Analytics & Insight | ⬜ not started |
 | 5 — Depth & Parity | ⬜ not started |
@@ -85,20 +85,30 @@ This plan sequences the work that makes Education Hub adoptable and then defensi
 
 ---
 
-## Phase 2 — Learning Loop (Submissions + Online Quiz)
+## Phase 2 — Learning Loop (Submissions + Online Quiz) — ✅ DONE (2026-07-08)
 *Highest leverage: reuses the most existing code.*
 
 - **Goal:** close the assign→submit→grade→gradebook loop, and finish the exam feature you're ~60% into.
 - **Deliverables:**
-  - **Assignment submission:** students turn in work against a homework item → routed through the **existing `gateUpload` safety gate** → teacher grades in-app → mark flows into the gradebook/marks pipeline.
-  - **Online quiz delivery:** turn a generated Quiz into a timed, student-facing assessment auto-graded against the answer key the generator already produces; attempts stored and surfaced in results.
-- **Data model:** `Submission` (homework_id, student_id, file_path, submitted_at, grade, feedback, status); `QuizAttempt` + `QuizResponse` (exam_id, student_id, question_id, answer, is_correct, score) reusing `ExamQuestion`.
-- **Backend:** extend homework controller with submit/grade endpoints; quiz-attempt controller (start/submit/auto-grade) reusing `examGenerator` answer keys; notifications on "submitted"/"graded" (Phase 1).
-- **Frontend:** student submit UI + "my submissions"; teacher grading view; student quiz-taking page with timer; results view.
-- **Reuses:** `gateUpload`, marks approval pipeline, `examGenerator`/`ExamQuestion`, PDF viewer, Phase 1 notifications.
+  - ✅ **Assignment submission:** students turn in work against a homework item → routed through the **existing `gateUpload` safety gate** → teacher grades in-app → student + parents notified.
+  - ✅ **Online quiz delivery:** a quiz-format exam becomes a timed, student-facing assessment auto-graded against the answer key; the score is written back as a `Mark` (lands in the gradebook); attempts stored and surfaced in results.
+- **Data model:** `Submission` (homework_id, student_id, file_path, note, status, grade, max_grade, feedback); `QuizAttempt` + `QuizResponse` (exam_id/student_id/question_id, answer, is_correct, awarded); `Exam.time_limit_min`. ✅ migrated (`20260708205900_add_submissions_and_quiz`).
+- **Backend:** `submission.controller` (submit/list/grade/my-submission) + `quiz.controller` (get/submit/result/attempts/my-quizzes); routes under `/api/homework/:id/*`, `/api/submissions/:id/grade`, `/api/exams/:id/quiz*`; notifications on graded submissions; `createExam` threads `time_limit_min`. ✅
+- **Frontend:** interactive `HomeworkList` (submit/resubmit + status/grade) for students; teacher **Submissions** modal with inline grading; **My Quizzes** on the student dashboard; `QuizTake` page (timer + auto-submit, per-question results). ✅
+- **Reuses:** `gateUpload`, the marks table/gradebook, `examGenerator`/`ExamQuestion`, Phase 1 notifications, the existing multer/upload + `uploads/` static serving.
 - **Dependencies:** Phase 1 (for submit/grade notifications).
 - **Effort:** L.
-- **Exit criterion:** a student submits homework and takes a generated quiz; the quiz auto-scores and the teacher-graded submission mark lands in the gradebook.
+- **Exit criterion:** a student submits homework and takes a generated quiz; the quiz auto-scores and the teacher-graded submission mark lands in the gradebook. ✅ **met** (integration-tested).
+
+> **Progress log**
+> - 2026-07-08: **Completed Phase 2.**
+>   - **Data:** `Submission`, `QuizAttempt`, `QuizResponse` models (+ `Exam.time_limit_min`) and migration; unique constraints per (homework,student) and (exam,student).
+>   - **Submissions:** student submit (file+note through `gateUpload`; graded submissions locked), teacher list + inline grade (with `canAccessClass` guard), student `my-submission`; graded → student & parents notified (category `marks`). `getMyHomework` now returns each item's `my_submission`.
+>   - **Quiz:** student fetch (answers hidden, attempt clock starts), submit (auto-grade objective questions, persist attempt+responses, upsert a clamped `Mark`), result (answers revealed), teacher attempts list, and student `my-quizzes` discovery. Design note: a quiz **is** an Exam, so the auto-score naturally becomes a Mark — that's the clean gradebook path. Homework grades stay on the submission (homework has no exam).
+>   - **Frontend:** `HomeworkList` gained an interactive submit/resubmit control (students only; parents stay read-only); `QuizTake` page with countdown + auto-submit and a per-question result view; **My Quizzes** card on the student dashboard; **Submissions** grading modal on the teacher homework page; student `quiz/:examId` route.
+>   - **Tests green:** `npm test` → **4 suites, 39 passing** (+5 Phase 2: submission submit/grade/notify, safety-gate block, graded-lock; quiz serve-without-answers/auto-grade/Mark-write/result/no-resubmit and cross-class rejection). `cleanDatabase` teardown extended for the new tables. `cd client && npx vite build` succeeds.
+>
+> **Follow-ups deferred (not blockers):** no UI yet to set a quiz's `time_limit_min` at creation (backend accepts it; defaults to untimed) or a teacher quiz-attempts screen in `ExamMarks`; quiz Marks are written directly (not run through the marks-approval workflow); a submissions/quiz view for parents is read-only via existing pages only.
 
 ---
 

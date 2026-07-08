@@ -1,3 +1,16 @@
+import { useState } from 'react';
+import api from '../services/api';
+
+interface Submission {
+  id: string;
+  file_path: string | null;
+  note: string | null;
+  status: string;
+  grade: number | null;
+  max_grade: number | null;
+  feedback: string | null;
+}
+
 interface HomeworkItem {
   id: string;
   title: string;
@@ -6,9 +19,14 @@ interface HomeworkItem {
   subject: { id: string; name: string; code: string };
   assigned_by_user: { id: string; name: string } | null;
   book?: { id: string; title: string; author: string } | null;
+  my_submission?: Submission | null;
 }
 
-export default function HomeworkList({ homework }: { homework: HomeworkItem[] }) {
+export default function HomeworkList({ homework, interactive = false, onChange }: {
+  homework: HomeworkItem[];
+  interactive?: boolean;
+  onChange?: () => void;
+}) {
   const today = new Date().toISOString().split('T')[0];
 
   const dueBadge = (dueDate: string) => {
@@ -49,6 +67,7 @@ export default function HomeworkList({ homework }: { homework: HomeworkItem[] })
               <p className="text-xs text-gray-400 mt-2">
                 {hw.subject.name}{hw.assigned_by_user ? ` • ${hw.assigned_by_user.name}` : ''}
               </p>
+              {interactive && <SubmissionControl homeworkId={hw.id} submission={hw.my_submission || null} onChange={onChange} />}
             </div>
           ))}
         </div>
@@ -59,7 +78,7 @@ export default function HomeworkList({ homework }: { homework: HomeworkItem[] })
           <summary className="text-sm text-gray-400 cursor-pointer hover:text-gray-600 select-none">
             Past homework ({past.length})
           </summary>
-          <div className="space-y-2 mt-2 opacity-60">
+          <div className="space-y-2 mt-2">
             {past.map((hw) => (
               <div key={hw.id} className="border border-gray-100 rounded-lg p-3">
                 <div className="flex items-center justify-between">
@@ -69,10 +88,86 @@ export default function HomeworkList({ homework }: { homework: HomeworkItem[] })
                   </div>
                   <span className="text-xs text-gray-400">{hw.due_date}</span>
                 </div>
+                {interactive && <SubmissionControl homeworkId={hw.id} submission={hw.my_submission || null} onChange={onChange} />}
               </div>
             ))}
           </div>
         </details>
+      )}
+    </div>
+  );
+}
+
+function SubmissionControl({ homeworkId, submission, onChange }: {
+  homeworkId: string;
+  submission: Submission | null;
+  onChange?: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const graded = submission?.status === 'graded';
+
+  const submit = async () => {
+    setError('');
+    if (!file && !note.trim()) { setError('Attach a file or write a note.'); return; }
+    setBusy(true);
+    try {
+      const fd = new FormData();
+      if (file) fd.append('file', file);
+      if (note.trim()) fd.append('note', note.trim());
+      await api.post(`/homework/${homeworkId}/submit`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setOpen(false); setFile(null); setNote('');
+      onChange?.();
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Submission failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mt-3 pt-3 border-t border-gray-100">
+      {graded ? (
+        <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+          <p className="text-sm font-medium text-green-800">
+            Graded{submission!.grade !== null ? `: ${submission!.grade}${submission!.max_grade !== null ? `/${submission!.max_grade}` : ''}` : ''}
+          </p>
+          {submission!.feedback && <p className="text-xs text-green-700 mt-0.5">{submission!.feedback}</p>}
+        </div>
+      ) : submission ? (
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">Submitted</span>
+            {submission.file_path && (
+              <a href={`/uploads/${submission.file_path}`} target="_blank" rel="noreferrer" className="text-indigo-600 hover:text-indigo-800 text-xs">View file</a>
+            )}
+          </div>
+          <button onClick={() => setOpen((v) => !v)} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">
+            {open ? 'Cancel' : 'Resubmit'}
+          </button>
+        </div>
+      ) : (
+        <button onClick={() => setOpen((v) => !v)} className="text-sm text-indigo-600 hover:text-indigo-800 font-medium">
+          {open ? 'Cancel' : 'Submit work'}
+        </button>
+      )}
+
+      {open && !graded && (
+        <div className="mt-2 space-y-2">
+          <input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)}
+            className="block w-full text-xs text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
+          <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Add a note (optional)"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 outline-none focus:ring-2 focus:ring-indigo-500" />
+          {error && <p className="text-xs text-red-600">{error}</p>}
+          <button onClick={submit} disabled={busy}
+            className="bg-indigo-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-indigo-700 transition disabled:opacity-50">
+            {busy ? 'Submitting…' : 'Submit'}
+          </button>
+        </div>
       )}
     </div>
   );
