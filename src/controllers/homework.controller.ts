@@ -141,7 +141,14 @@ export async function getMyHomework(req: Request, res: Response): Promise<void> 
       orderBy: { due_date: 'asc' },
     });
 
-    res.json({ homework });
+    // Attach this student's own submission (status/grade) to each item.
+    const submissions = await prisma.submission.findMany({
+      where: { student_id: student.id, homework_id: { in: homework.map((h) => h.id) } },
+    });
+    const byHomework = new Map(submissions.map((s) => [s.homework_id, s]));
+    const withSubmission = homework.map((h) => ({ ...h, my_submission: byHomework.get(h.id) || null }));
+
+    res.json({ homework: withSubmission });
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
   }

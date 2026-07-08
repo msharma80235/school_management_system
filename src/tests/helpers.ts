@@ -43,6 +43,9 @@ export async function cleanDatabase() {
   await prisma.notification.deleteMany();
   await prisma.notificationPreference.deleteMany();
   await prisma.auditLog.deleteMany();
+  await prisma.quizResponse.deleteMany();
+  await prisma.quizAttempt.deleteMany();
+  await prisma.submission.deleteMany();
   await prisma.mark.deleteMany();
   await prisma.examQuestion.deleteMany();
   await prisma.exam.deleteMany();

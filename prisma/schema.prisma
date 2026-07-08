@@ -39,6 +39,8 @@ model Organization {
   schedule_slots ClassScheduleSlot[]
   teacher_schedule_slots TeacherScheduleSlot[]
   content_scan_results ContentScanResult[]
+  submissions  Submission[]
+  quiz_attempts QuizAttempt[]
 
   @@map("organizations")
 }
@@ -157,6 +159,8 @@ model Student {
   attendance   Attendance[]
   marks        Mark[]
   invitations  Invitation[]
+  submissions  Submission[]
+  quiz_attempts QuizAttempt[]
 
   @@unique([roll_number, org_id])
   @@map("students")
@@ -242,8 +246,11 @@ model Exam {
   org             Organization @relation(fields: [org_id], references: [id])
   created_at      DateTime @default(now())
 
+  time_limit_min  Int?     // optional per-quiz time limit (minutes) for online quizzes
+
   marks Mark[]
   questions ExamQuestion[]
+  quiz_attempts QuizAttempt[]
 
   @@map("exams")
 }
@@ -258,6 +265,7 @@ model ExamQuestion {
   correct_answer String? // objective questions only — never shown to students
   marks          Int     @default(1)
   exam           Exam    @relation(fields: [exam_id], references: [id])
+  responses      QuizResponse[]
 
   @@map("exam_questions")
 }
@@ -318,6 +326,8 @@ model Homework {
   org         Organization @relation(fields: [org_id], references: [id])
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
+
+  submissions Submission[]
 
   @@map("homework")
 }
@@ -566,4 +576,64 @@ model NotificationPreference {
 
   @@unique([user_id, category])
   @@map("notification_preferences")
+}
+
+// A student's turn-in against a homework item. Optional file goes through the
+// same upload safety gate as everything else. Teachers grade in-app; the grade
+// lives here (homework has no exam, so it doesn't touch the marks table).
+model Submission {
+  id           String    @id @default(uuid())
+  homework_id  String
+  homework     Homework  @relation(fields: [homework_id], references: [id])
+  student_id   String
+  student      Student   @relation(fields: [student_id], references: [id])
+  file_path    String?
+  note         String?   // student's optional text note
+  status       String    @default("submitted") // submitted | graded
+  grade        Float?    // teacher-assigned marks
+  max_grade    Float?    // out of
+  feedback     String?
+  graded_by    String?   // teacher user id (no relation — decoupled)
+  submitted_at DateTime  @default(now())
+  graded_at    DateTime?
+  org_id       String
+  org          Organization @relation(fields: [org_id], references: [id])
+
+  @@unique([homework_id, student_id])
+  @@map("submissions")
+}
+
+// One student's run at an online quiz (a quiz-format Exam). Auto-graded against
+// the objective questions' correct_answer; the score is written back as a Mark
+// so it flows into the existing gradebook / report card.
+model QuizAttempt {
+  id           String    @id @default(uuid())
+  exam_id      String
+  exam         Exam      @relation(fields: [exam_id], references: [id])
+  student_id   String
+  student      Student   @relation(fields: [student_id], references: [id])
+  started_at   DateTime  @default(now())
+  submitted_at DateTime?
+  score        Float?
+  max_score    Float?
+  org_id       String
+  org          Organization @relation(fields: [org_id], references: [id])
+  responses    QuizResponse[]
+
+  @@unique([exam_id, student_id])
+  @@map("quiz_attempts")
+}
+
+model QuizResponse {
+  id          String       @id @default(uuid())
+  attempt_id  String
+  attempt     QuizAttempt  @relation(fields: [attempt_id], references: [id])
+  question_id String
+  question    ExamQuestion @relation(fields: [question_id], references: [id])
+  answer      String?
+  is_correct  Boolean?     // null for non-objective questions (not auto-graded)
+  awarded     Float        @default(0)
+
+  @@unique([attempt_id, question_id])
+  @@map("quiz_responses")
 }

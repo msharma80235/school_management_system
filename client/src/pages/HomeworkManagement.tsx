@@ -34,6 +34,7 @@ export default function HomeworkManagement() {
   const [allBooks, setAllBooks] = useState<BookOption[]>([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [viewSubs, setViewSubs] = useState<Homework | null>(null);
 
   useEffect(() => {
     api.get('/classes').then((r) => setClasses(r.data.classes));
@@ -204,6 +205,7 @@ export default function HomeworkManagement() {
               </div>
               {!readOnly && (
                 <div className="flex gap-2 ml-4">
+                  <button onClick={() => setViewSubs(hw)} className="text-gray-600 hover:text-gray-900 text-sm font-medium">Submissions</button>
                   <button onClick={() => openEdit(hw)} className="text-indigo-600 hover:text-indigo-800 text-sm font-medium">Edit</button>
                   <button onClick={() => handleDelete(hw)} className="text-red-600 hover:text-red-800 text-sm font-medium">Remove</button>
                 </div>
@@ -312,6 +314,108 @@ export default function HomeworkManagement() {
           </div>
         </div>
       )}
+
+      {viewSubs && <SubmissionsModal homework={viewSubs} onClose={() => setViewSubs(null)} />}
+    </div>
+  );
+}
+
+interface SubmissionRow {
+  id: string;
+  file_path: string | null;
+  note: string | null;
+  status: string;
+  grade: number | null;
+  max_grade: number | null;
+  feedback: string | null;
+  submitted_at: string;
+  student: { id: string; first_name: string; last_name: string; roll_number: string };
+}
+
+function SubmissionsModal({ homework, onClose }: { homework: Homework; onClose: () => void }) {
+  const [rows, setRows] = useState<SubmissionRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [drafts, setDrafts] = useState<Record<string, { grade: string; max_grade: string; feedback: string }>>({});
+  const [savingId, setSavingId] = useState('');
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const r = await api.get(`/homework/${homework.id}/submissions`);
+      setRows(r.data.submissions);
+      const d: Record<string, { grade: string; max_grade: string; feedback: string }> = {};
+      r.data.submissions.forEach((s: SubmissionRow) => {
+        d[s.id] = { grade: s.grade?.toString() ?? '', max_grade: s.max_grade?.toString() ?? '', feedback: s.feedback ?? '' };
+      });
+      setDrafts(d);
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => { load(); }, [homework.id]);
+
+  const save = async (id: string) => {
+    setSavingId(id);
+    try {
+      await api.patch(`/submissions/${id}/grade`, {
+        grade: drafts[id].grade, max_grade: drafts[id].max_grade, feedback: drafts[id].feedback,
+      });
+      await load();
+    } finally {
+      setSavingId('');
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">Submissions</h2>
+            <p className="text-sm text-gray-500">{homework.title}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
+        </div>
+        <div className="p-6 space-y-3">
+          {loading ? (
+            <p className="text-center text-gray-400 py-8">Loading…</p>
+          ) : rows.length === 0 ? (
+            <p className="text-center text-gray-400 py-8">No submissions yet.</p>
+          ) : rows.map((s) => (
+            <div key={s.id} className="border border-gray-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="font-medium text-gray-900">{s.student.first_name} {s.student.last_name}</span>
+                  <span className="text-xs text-gray-400 ml-2 font-mono">{s.student.roll_number}</span>
+                </div>
+                <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${s.status === 'graded' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{s.status}</span>
+              </div>
+              {s.note && <p className="text-sm text-gray-600 mt-2">{s.note}</p>}
+              {s.file_path && (
+                <a href={`/uploads/${s.file_path}`} target="_blank" rel="noreferrer" className="inline-block mt-2 text-xs text-indigo-600 hover:text-indigo-800 font-medium">View attachment</a>
+              )}
+              <div className="flex items-end gap-2 mt-3">
+                <div>
+                  <label className="block text-[11px] text-gray-500 mb-0.5">Grade</label>
+                  <input type="number" value={drafts[s.id]?.grade ?? ''} onChange={(e) => setDrafts((d) => ({ ...d, [s.id]: { ...d[s.id], grade: e.target.value } }))}
+                    className="w-20 px-2 py-1.5 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-gray-500 mb-0.5">Out of</label>
+                  <input type="number" value={drafts[s.id]?.max_grade ?? ''} onChange={(e) => setDrafts((d) => ({ ...d, [s.id]: { ...d[s.id], max_grade: e.target.value } }))}
+                    className="w-20 px-2 py-1.5 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <input type="text" placeholder="Feedback (optional)" value={drafts[s.id]?.feedback ?? ''} onChange={(e) => setDrafts((d) => ({ ...d, [s.id]: { ...d[s.id], feedback: e.target.value } }))}
+                  className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                <button onClick={() => save(s.id)} disabled={savingId === s.id}
+                  className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-indigo-700 transition disabled:opacity-50">
+                  {savingId === s.id ? '…' : 'Save'}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
