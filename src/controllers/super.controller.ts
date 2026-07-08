@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import prisma from '../prisma/client';
 import { hashPassword } from '../utils/password';
+import { audit } from '../utils/audit';
 
 // Platform-wide stats
 export async function platformStats(_req: Request, res: Response): Promise<void> {
@@ -46,6 +47,11 @@ export async function toggleOrgStatus(req: Request, res: Response): Promise<void
       where: { id },
       data: { is_active: !existing.is_active },
       include: { _count: { select: { users: true, students: true, classes: true } } },
+    });
+
+    await audit(req, org.is_active ? 'org.enable' : 'org.disable', {
+      orgId: org.id, targetType: 'organization', targetId: org.id,
+      summary: `${org.is_active ? 'Enabled' : 'Disabled'} organization "${org.name}"`,
     });
 
     res.json({
@@ -102,6 +108,10 @@ export async function updateOrgAdmin(req: Request, res: Response): Promise<void>
     if (new_password) data.password = await hashPassword(new_password);
 
     const updated = await prisma.user.update({ where: { id: adminId }, data, select: adminSelect });
+    await audit(req, 'org.admin_update', {
+      orgId, targetType: 'user', targetId: adminId,
+      summary: `Updated admin account ${updated.email}${new_password ? ' (password changed)' : ''}`,
+    });
     res.json({ message: 'Admin account updated', admin: updated });
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
@@ -135,6 +145,11 @@ export async function createOrgAdmin(req: Request, res: Response): Promise<void>
       select: adminSelect,
     });
 
+    await audit(req, 'org.admin_create', {
+      orgId, targetType: 'user', targetId: admin.id,
+      summary: `Added admin ${admin.email} to "${org.name}"`,
+    });
+
     res.status(201).json({ message: `Admin added to "${org.name}"`, admin });
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
@@ -165,6 +180,10 @@ export async function toggleOrgAdminStatus(req: Request, res: Response): Promise
       data: { is_active: !admin.is_active },
       select: adminSelect,
     });
+    await audit(req, updated.is_active ? 'org.admin_activate' : 'org.admin_deactivate', {
+      orgId, targetType: 'user', targetId: adminId,
+      summary: `${updated.is_active ? 'Activated' : 'Deactivated'} admin ${updated.email}`,
+    });
     res.json({ message: `Admin ${updated.is_active ? 'activated' : 'deactivated'}`, admin: updated });
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
@@ -193,6 +212,12 @@ export async function resetOrgAdminPassword(req: Request, res: Response): Promis
 
     const hashed = await hashPassword(new_password);
     await prisma.user.updateMany({ where: { org_id: id, role: 'admin' }, data: { password: hashed } });
+
+    await audit(req, 'org.admin_password_reset', {
+      orgId: id, targetType: 'organization', targetId: id,
+      summary: `Reset password for ${admins.length} admin account(s) of "${org.name}"`,
+      metadata: { admins: admins.map((a) => a.email) },
+    });
 
     res.json({
       message: `Password reset for ${admins.length} admin account(s) of "${org.name}"`,

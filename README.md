@@ -178,7 +178,12 @@ Example agents: an [Ollama](https://ollama.com)-backed script (`python3 chat_age
 
 ## Note for Developers
 
-> ⚠️ **Before deploying to production:** copy `.env.example` to `.env` and set a strong, random `JWT_SECRET`. If the variable is unset, `src/utils/jwt.ts` currently falls back to a hardcoded `'default-secret'` — acceptable for local development only. For production, replace that fallback so the app **fails to start** without a real secret instead of silently signing tokens with a known value.
+> ⚠️ **Before deploying to production:** copy `.env.example` to `.env` and set a strong, random `JWT_SECRET`. In production (`NODE_ENV=production`) the app now **refuses to start** if `JWT_SECRET` is missing or left as the known `'default-secret'` value (`src/utils/jwt.ts`), so tokens can never be signed with a guessable key. Outside production a convenience fallback keeps local dev and the test suite running without configuration.
+
+**Other hardening (Phase 0 of [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)):**
+- **Auth rate limiting** — login, super-login, org registration, and invite lookup/accept are throttled per IP with escalating lockout (`src/middleware/rateLimit.ts`); disabled automatically under `NODE_ENV=test`. In-memory today; move to a shared store (Redis) when running multiple instances.
+- **Audit log** — privileged actions (activate/deactivate, lock/unlock, moderator assignment, password resets, org enable/disable, content approvals, content-safety decisions) are recorded to an append-only `AuditLog` table via `src/utils/audit.ts`, viewable by admins at **Audit Log** in the sidebar (super admin sees the whole platform). Writes are best-effort and never block the underlying action.
+- **Isolated test DB** — `npm test` builds a throwaway `prisma/test.db` (Jest global setup) so the suite never touches your `dev.db`.
 
 ## Further Documentation
 

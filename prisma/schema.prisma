@@ -507,3 +507,26 @@ model VolunteerAttendance {
   @@unique([volunteer_id, date])
   @@map("volunteer_attendance")
 }
+
+// Append-only trail of privileged actions (approvals, password resets,
+// activate/deactivate/lock, org enable/disable, moderator assignment, content
+// -safety decisions). Deliberately decoupled — actor/org are stored as plain
+// ids (no relations) so a record survives even if the actor is later deleted,
+// and there are no update/delete endpoints.
+model AuditLog {
+  id          String   @id @default(uuid())
+  org_id      String?  // null for platform-level (super admin) actions
+  actor_id    String?
+  actor_name  String?
+  actor_role  String?
+  action      String   // e.g. "user.lock", "org.disable", "content.approve"
+  target_type String?  // e.g. "user", "organization", "book"
+  target_id   String?
+  summary     String?  // human-readable one-liner
+  metadata    String?  // optional JSON blob for extra context
+  created_at  DateTime @default(now())
+
+  @@index([org_id, created_at])
+  @@index([actor_id])
+  @@map("audit_logs")
+}

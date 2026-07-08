@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import prisma from '../prisma/client';
 import { hashPassword } from '../utils/password';
+import { audit } from '../utils/audit';
 
 const userSelect = {
   id: true, name: true, email: true, role: true, subject: true,
@@ -70,6 +71,10 @@ export async function toggleUserActive(req: Request, res: Response): Promise<voi
       data: { is_active: !target.is_active },
       select: userSelect,
     });
+    await audit(req, user.is_active ? 'user.activate' : 'user.deactivate', {
+      targetType: 'user', targetId: user.id,
+      summary: `${user.is_active ? 'Activated' : 'Deactivated'} ${user.name} (${user.email})`,
+    });
     res.json({ message: `${user.name} ${user.is_active ? 'activated' : 'deactivated'}`, user });
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
@@ -91,6 +96,10 @@ export async function toggleUserLock(req: Request, res: Response): Promise<void>
       data: { is_locked: !target.is_locked },
       select: userSelect,
     });
+    await audit(req, user.is_locked ? 'user.lock' : 'user.unlock', {
+      targetType: 'user', targetId: user.id,
+      summary: `${user.is_locked ? 'Locked' : 'Unlocked'} ${user.name} (${user.email})`,
+    });
     res.json({ message: `${user.name} ${user.is_locked ? 'locked' : 'unlocked'}`, user });
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
@@ -107,6 +116,10 @@ export async function toggleUserModerator(req: Request, res: Response): Promise<
       where: { id: target.id },
       data: { is_moderator: !target.is_moderator },
       select: userSelect,
+    });
+    await audit(req, user.is_moderator ? 'user.moderator_grant' : 'user.moderator_revoke', {
+      targetType: 'user', targetId: user.id,
+      summary: `${user.name} is ${user.is_moderator ? 'now a moderator' : 'no longer a moderator'}`,
     });
     res.json({ message: `${user.name} is ${user.is_moderator ? 'now a moderator' : 'no longer a moderator'}`, user });
   } catch (error) {
@@ -127,6 +140,10 @@ export async function resetUserPassword(req: Request, res: Response): Promise<vo
 
     const hashed = await hashPassword(new_password);
     await prisma.user.update({ where: { id: target.id }, data: { password: hashed } });
+    await audit(req, 'user.password_reset', {
+      targetType: 'user', targetId: target.id,
+      summary: `Reset password for ${target.name} (${target.email})`,
+    });
     res.json({ message: `Password reset for ${target.name}` });
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });

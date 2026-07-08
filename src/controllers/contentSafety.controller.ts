@@ -4,6 +4,7 @@ import path from 'path';
 import { extractPdfText } from '../utils/pdfText';
 import prisma from '../prisma/client';
 import { scanText, imageOutcome, unscannableOutcome, ScanOutcome } from '../utils/contentSafety';
+import { audit } from '../utils/audit';
 
 interface SourceItem {
   source_type: string;
@@ -215,6 +216,10 @@ export async function markSafe(req: Request, res: Response): Promise<void> {
     const result = await prisma.contentScanResult.update({
       where: { id },
       data: { resolution: 'marked_safe', resolved_by: req.user!.userId, resolved_at: new Date() },
+    });
+    await audit(req, 'content.mark_safe', {
+      targetType: result.source_type, targetId: result.source_id,
+      summary: `Marked "${result.title}" safe (was ${result.status})`,
     });
     res.json({ message: `"${result.title}" marked safe`, result });
   } catch (error) {

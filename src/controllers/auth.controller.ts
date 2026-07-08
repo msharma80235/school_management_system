@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import prisma from '../prisma/client';
 import { generateToken } from '../utils/jwt';
 import { comparePassword, hashPassword } from '../utils/password';
+import { audit } from '../utils/audit';
 
 export async function login(req: Request, res: Response): Promise<void> {
   try {
@@ -151,6 +152,12 @@ export async function changePassword(req: Request, res: Response): Promise<void>
     await prisma.user.update({
       where: { id: user.id },
       data: { password: hashed },
+    });
+
+    await audit(req, 'account.password_change', {
+      orgId: user.org_id,
+      targetType: 'user', targetId: user.id,
+      summary: `${user.name} changed their own password`,
     });
 
     res.json({ message: 'Password changed successfully' });
