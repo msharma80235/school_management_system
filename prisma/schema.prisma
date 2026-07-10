@@ -42,6 +42,7 @@ model Organization {
   submissions  Submission[]
   quiz_attempts QuizAttempt[]
   admissions   Admission[]
+  book_loans   BookLoan[]
 
   @@map("organizations")
 }
@@ -163,6 +164,7 @@ model Student {
   submissions  Submission[]
   quiz_attempts QuizAttempt[]
   admission    Admission?
+  book_loans   BookLoan[]
 
   @@unique([roll_number, org_id])
   @@map("students")
@@ -345,6 +347,7 @@ model Book {
   custom_category String?
   class_id        String?
   is_mandatory    Boolean  @default(true)
+  total_copies    Int      @default(1) // physical copies available for lending
   file_path       String?
   approval_status String   @default("approved") // pending | approved | rejected
   uploaded_by     String?
@@ -361,6 +364,7 @@ model Book {
   updated_at      DateTime @updatedAt
 
   homework Homework[]
+  loans    BookLoan[]
 
   @@map("books")
 }
@@ -668,4 +672,26 @@ model Admission {
 
   @@index([org_id, stage])
   @@map("admissions")
+}
+
+// A book issued to a student. `returned_at` null means it's still out; a fine
+// is computed on return when it's overdue. Copy availability is total_copies
+// on the Book minus its active (unreturned) loans.
+model BookLoan {
+  id          String    @id @default(uuid())
+  book_id     String
+  book        Book      @relation(fields: [book_id], references: [id])
+  student_id  String
+  student     Student   @relation(fields: [student_id], references: [id])
+  issued_at   DateTime  @default(now())
+  due_date    String    // YYYY-MM-DD
+  returned_at DateTime?
+  fine        Float     @default(0)
+  fine_paid   Boolean   @default(false)
+  issued_by   String?   // staff/admin user id (no relation — decoupled)
+  org_id      String
+  org         Organization @relation(fields: [org_id], references: [id])
+
+  @@index([org_id, returned_at])
+  @@map("book_loans")
 }

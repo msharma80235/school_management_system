@@ -191,6 +191,81 @@ export async function updateSlot(req: Request, res: Response): Promise<void> {
   }
 }
 
+const toMin = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+const toHHMM = (min: number) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
+
+// Auto-generate a weekly timetable for a class: lays the class's subjects across
+// a day×period grid (round-robin), assigns each subject's teacher when the class
+// has one whose subject matches, and skips a teacher for a cell where that would
+// double-book them (validated with the same findTeacherConflict used everywhere).
+export async function generateTimetable(req: Request, res: Response): Promise<void> {
+  try {
+    const orgId = req.user!.orgId!;
+    const { class_id, replace } = req.body;
+    const start_time = req.body.start_time || '09:00';
+    const period_minutes = Math.min(Math.max(parseInt(req.body.period_minutes) || 40, 20), 120);
+    const periods_per_day = Math.min(Math.max(parseInt(req.body.periods_per_day) || 6, 1), 12);
+    const days: number[] = Array.isArray(req.body.days) && req.body.days.length
+      ? req.body.days.filter((d: number) => d >= 0 && d <= 6)
+      : [1, 2, 3, 4, 5];
+
+    if (!TIME_RE.test(start_time)) { res.status(400).json({ error: 'start_time must be HH:MM 24-hour' }); return; }
+
+    const cls = await prisma.class.findFirst({ where: { id: class_id, org_id: orgId } });
+    if (!cls) { res.status(404).json({ error: 'Class not found' }); return; }
+
+    const classSubjects = await prisma.classSubject.findMany({
+      where: { class_id }, include: { subject: { select: { id: true, name: true } } },
+    });
+    if (classSubjects.length === 0) { res.status(400).json({ error: 'Add subjects to this class before generating a timetable' }); return; }
+
+    // Map each subject to a class teacher whose subject matches (heuristic).
+    const classTeachers = await prisma.classTeacher.findMany({
+      where: { class_id }, include: { teacher: { select: { id: true, subject: true } } },
+    });
+    const subjectTeacher = new Map<string, string>();
+    for (const cs of classSubjects) {
+      const t = classTeachers.find((ct) => (ct.teacher.subject || '').toLowerCase() === cs.subject.name.toLowerCase());
+      if (t) subjectTeacher.set(cs.subject.id, t.teacher.id);
+    }
+
+    const existing = await prisma.classScheduleSlot.count({ where: { class_id } });
+    if (existing > 0 && !replace) {
+      res.status(409).json({ error: 'This class already has a timetable. Pass replace: true to regenerate it.' }); return;
+    }
+    if (replace) await prisma.classScheduleSlot.deleteMany({ where: { class_id } });
+
+    const startMin = toMin(start_time);
+    const periods = Array.from({ length: periods_per_day }, (_, i) => ({
+      start: toHHMM(startMin + i * period_minutes), end: toHHMM(startMin + (i + 1) * period_minutes),
+    }));
+
+    const warnings: string[] = [];
+    const slots = [];
+    let k = 0;
+    for (const day of days) {
+      for (let p = 0; p < periods_per_day; p++) {
+        const cs = classSubjects[k % classSubjects.length]; k++;
+        const { start, end } = periods[p];
+        let teacherId: string | null = subjectTeacher.get(cs.subject.id) || null;
+        if (teacherId) {
+          const conflict = await findTeacherConflict(teacherId, day, start, end);
+          if (conflict) { warnings.push(`${cs.subject.name} (day ${day} ${start}): ${conflict} — period left without a teacher`); teacherId = null; }
+        }
+        const slot = await prisma.classScheduleSlot.create({
+          data: { class_id, day_of_week: day, start_time: start, end_time: end, subject_id: cs.subject.id, teacher_id: teacherId, org_id: orgId },
+          include: slotInclude,
+        });
+        slots.push(slot);
+      }
+    }
+
+    res.status(201).json({ message: `Generated ${slots.length} periods`, created: slots.length, warnings, slots });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
 export async function deleteSlot(req: Request, res: Response): Promise<void> {
   try {
     const id = req.params.id as string;
