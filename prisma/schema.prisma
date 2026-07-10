@@ -43,6 +43,8 @@ model Organization {
   quiz_attempts QuizAttempt[]
   admissions   Admission[]
   book_loans   BookLoan[]
+  safety_setting SafetySetting?
+  data_exports DataExport[]
 
   @@map("organizations")
 }
@@ -467,6 +469,7 @@ model ContentScanResult {
   categories  String?   // JSON array: ["adult", "profanity", ...]
   matches     String?   // JSON: [{ term, category, count }]
   note        String?   // e.g. why an item needs manual review
+  av_status   String?   // clean | infected | skipped (malware scan verdict, when run)
   scanned_at  DateTime  @default(now())
   resolved_by String?
   resolved_at DateTime?
@@ -476,6 +479,37 @@ model ContentScanResult {
 
   @@unique([source_type, source_id])
   @@map("content_scan_results")
+}
+
+// Per-org content-safety configuration. One row per org (absent = defaults).
+// Lets an admin tune the built-in scanner without a code change: add custom
+// blocked/review terms, mute categories that fire falsely for their context,
+// and optionally block (not just queue) review-level uploads.
+model SafetySetting {
+  id                   String   @id @default(uuid())
+  org_id               String   @unique
+  org                  Organization @relation(fields: [org_id], references: [id])
+  extra_terms          String?  // JSON: [{ term, category, severity: 'flagged'|'review' }]
+  muted_categories     String?  // JSON array of built-in categories to ignore, e.g. ["violence"]
+  block_review_uploads Boolean  @default(false) // if true, 'review' uploads are rejected at the gate too
+  updated_by           String?
+  updated_at           DateTime @updatedAt
+
+  @@map("safety_settings")
+}
+
+// One row per data-export/backup an org runs — the data-ownership audit trail.
+model DataExport {
+  id           String   @id @default(uuid())
+  org_id       String
+  org          Organization @relation(fields: [org_id], references: [id])
+  requested_by String?
+  scope        String   @default("full")
+  record_count Int      @default(0)
+  byte_size    Int      @default(0)
+  created_at   DateTime @default(now())
+
+  @@map("data_exports")
 }
 
 model RolesDocument {

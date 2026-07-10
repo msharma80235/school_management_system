@@ -32,7 +32,7 @@ export async function uploadDocument(req: Request, res: Response): Promise<void>
     if (!req.file) { res.status(400).json({ error: 'A document file is required' }); return; }
 
     // Safety gate: inappropriate content never enters the system
-    const gate = await gateUpload([title, description, category].filter(Boolean).join(' '), req.file.filename);
+    const gate = await gateUpload([title, description, category].filter(Boolean).join(' '), req.file.filename, req.user!.orgId);
     if (!gate.ok) { res.status(400).json({ error: gate.error }); return; }
 
     const approved = canModerate(req);

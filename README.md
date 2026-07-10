@@ -199,6 +199,26 @@ The client is a PWA: a web manifest + icons make it **installable** on phones an
 
 **To enable push end-to-end** (deferred, needs keys): generate VAPID keys, persist each browser's `PushSubscription`, and send pushes from the `notify()` service (Phase 1) via the `web-push` library. The service-worker side is already wired.
 
+## Safety & Privacy (the moat)
+
+Phase 7 of [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) — makes "safe-by-default, data-you-own" a configurable, provable product identity, aligned with 2025–26 COPPA/FERPA tightening. A new **Safety & Privacy** page (admin) is the hub.
+
+- **Per-org wordlists & thresholds.** The built-in text scanner always runs, but each school can now add its own **custom blocked/review terms** and **mute built-in categories** that fire on legitimate lesson material (e.g. a history syllabus that mentions violence). An optional **strict mode** rejects borderline (review-level) uploads instead of merely queuing them. Settings live in `SafetySetting` (per org) and feed both the upload gate and the full content scan.
+- **Malware scan on every upload** (optional, local). Point `AV_SCAN_CMD` at a ClamAV-style scanner and infected files are rejected and deleted before they're ever stored — same pluggable, `.env`-only adapter discipline as the AI chat:
+
+  ```bash
+  AV_SCAN_CMD=clamdscan --no-summary --fdpass   # exit 1 + "... FOUND" = infected
+  ```
+- **Image analysis** (optional, local). Rules can't read pictures, so images queue for manual review by default. Point `IMAGE_SCAN_CMD` at any local classifier and uploaded images are auto-analyzed; a flagged image is blocked at the gate.
+
+  ```bash
+  IMAGE_SCAN_CMD=python3 /path/to/nsfw_classify.py   # prints "clean" | "flagged: <label>" | "review: <label>"
+  ```
+- **Safety audit report + parent assurances.** The page shows your protection posture (which layers are active), scan counts (flagged / unresolved / malware found), recent exports, and a safety activity trail. A `/api/safety/assurance` endpoint exposes the posture (no sensitive counts) to any org member so parent-facing views can show what protections are on.
+- **Self-serve data export (data-ownership proof point).** One click exports a full JSON backup of the school's records — users (never passwords), classes, students, exams, marks, attendance, homework, books, documents, admissions, loans. Every export is recorded in `DataExport` for the audit trail.
+
+> **Needs your environment:** the malware and image scanners are **off until you configure a local tool** (`AV_SCAN_CMD` / `IMAGE_SCAN_CMD`); with nothing set, the text scanner still gates every upload and images queue for manual review.
+
 ## Library & Timetable (depth)
 
 Two commonly-expected modules built on existing data (Phase 5 of [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)).

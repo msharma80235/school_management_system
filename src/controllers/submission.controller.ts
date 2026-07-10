@@ -39,7 +39,7 @@ export async function submitHomework(req: Request, res: Response): Promise<void>
     }
 
     // Safety gate: a flagged file is deleted and never stored.
-    const gate = await gateUpload(note || '', req.file?.filename);
+    const gate = await gateUpload(note || '', req.file?.filename, req.user!.orgId);
     if (!gate.ok) { res.status(400).json({ error: gate.error }); return; }
 
     // Replace any previous (ungraded) file.

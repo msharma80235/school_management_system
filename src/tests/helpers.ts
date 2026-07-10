@@ -64,6 +64,8 @@ export async function cleanDatabase() {
   await prisma.homework.deleteMany();
   await prisma.schoolDocument.deleteMany();
   await prisma.contentScanResult.deleteMany();
+  await prisma.safetySetting.deleteMany();
+  await prisma.dataExport.deleteMany();
   await prisma.reportCardConfig.deleteMany();
   await prisma.rolesDocument.deleteMany();
   await prisma.holiday.deleteMany();
