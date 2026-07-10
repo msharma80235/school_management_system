@@ -176,6 +176,14 @@ Example agents: an [Ollama](https://ollama.com)-backed script (`python3 chat_age
 
 **The safety pipeline still wraps your agent on both sides.** Before the AI sees anything: input sanitization, the secrets/credentials filter, and the project-scope gate. After it answers: the reply is scanned with the same kid-safety wordlists used by Content Safety (a flagged reply is discarded and the knowledge base answers instead) and secret-shaped content is redacted. Answers from an AI agent are labeled "answered by local AI agent · safety-screened" in the chat widget, with the full step trace visible per message.
 
+## Admissions & Enrollment
+
+A prospective-student funnel that feeds the existing onboarding (Phase 3 of [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)).
+
+- **Public enquiry form** — each school has a shareable, no-login page at `/apply/<org-slug>` where prospective families submit an enquiry (student + guardian details, grade applying for, a message). Free text is checked by the content-safety scanner; the applicant gets an acknowledgement email.
+- **Admin funnel** — the **Admissions** page shows every enquiry with per-stage counts and moves each through `enquiry → reviewing → accepted / rejected → enrolled`. Accept/reject decisions email the applicant.
+- **Convert to student** — one click enrolls an accepted applicant: it creates the `Student` in a chosen class (auto-assigning a roll number if none is given), links the admission, and can **email the guardian a parent sign-up link** — reusing the same single-use invitation flow as the rest of onboarding. All stage changes and enrollments are written to the **audit log**.
+
 ## Learning Loop (submissions & online quizzes)
 
 Closes the assign → do → grade → gradebook loop (Phase 2 of [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)).

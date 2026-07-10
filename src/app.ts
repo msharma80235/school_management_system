@@ -33,6 +33,7 @@ import contentSafetyRoutes from './routes/contentSafety.routes';
 import auditRoutes from './routes/audit.routes';
 import notificationRoutes from './routes/notification.routes';
 import submissionRoutes from './routes/submission.routes';
+import admissionRoutes from './routes/admission.routes';
 
 const app = express();
 
@@ -73,6 +74,7 @@ app.use('/api/content-safety', contentSafetyRoutes);
 app.use('/api/audit', auditRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/submissions', submissionRoutes);
+app.use('/api/admissions', admissionRoutes);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' });

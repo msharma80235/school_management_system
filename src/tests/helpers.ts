@@ -46,6 +46,7 @@ export async function cleanDatabase() {
   await prisma.quizResponse.deleteMany();
   await prisma.quizAttempt.deleteMany();
   await prisma.submission.deleteMany();
+  await prisma.admission.deleteMany();
   await prisma.mark.deleteMany();
   await prisma.examQuestion.deleteMany();
   await prisma.exam.deleteMany();
