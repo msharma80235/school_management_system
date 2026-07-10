@@ -15,7 +15,7 @@ This plan sequences the work that makes Education Hub adoptable and then defensi
 | 0 — Foundations & Hardening | ✅ done (2026-07-08) |
 | 1 — Communication & Notifications | ✅ done (2026-07-08) |
 | 2 — Learning Loop | ✅ done (2026-07-08) |
-| 3 — Admissions & Enrollment | ⬜ not started |
+| 3 — Admissions & Enrollment | ✅ done (2026-07-09) |
 | 4 — Analytics & Insight | ⬜ not started |
 | 5 — Depth & Parity | ⬜ not started |
 | 6 — Scale & Reach | ⬜ not started |
@@ -112,19 +112,29 @@ This plan sequences the work that makes Education Hub adoptable and then defensi
 
 ---
 
-## Phase 3 — Admissions & Enrollment
+## Phase 3 — Admissions & Enrollment — ✅ DONE (2026-07-09)
 - **Goal:** capture prospective students and convert them into enrolled records.
 - **Deliverables:**
-  - Public per-org **enquiry form** (at the org slug).
-  - Admin **application funnel** (enquiry → application → review → convert-to-student), tied into the existing invite-based onboarding.
-  - Status notifications to applicants (Phase 1).
-- **Data model:** `Enquiry`, `Application` (stage, documents, decision), convert action that creates a `Student` (+ optional parent invites).
-- **Backend:** public enquiry route (rate-limited, safety-gated for any uploads); admissions controller; conversion that reuses student creation + invitation flow.
-- **Frontend:** public enquiry page; admin Admissions board (kanban/table); convert wizard.
-- **Reuses:** invitation onboarding, `gateUpload` for uploaded docs, Phase 0 rate limiting, Phase 1 notifications, shared tables.
+  - ✅ Public per-org **enquiry form** (at the org slug, `/apply/:slug`).
+  - ✅ Admin **funnel** (enquiry → reviewing → accepted/rejected → enrolled), tied into the existing invite-based onboarding.
+  - ✅ Status emails to applicants (acknowledgement, accept/reject decisions, welcome + parent sign-up link).
+- **Data model:** a single stage-based `Admission` model (prospective student + guardian + `stage` + decision + optional `student_id` link) — **consolidated** rather than a separate `Enquiry`/`Application` split, which is simpler for a funnel and avoids a redundant table. ✅ migrated (`20260708…_add_admissions`).
+- **Backend:** public enquiry route (rate-limited via `authRateLimit`, safety-scanned free text); admissions controller (list+counts, stage transitions, convert); conversion reuses student creation + the invitation flow; stage/enroll actions write to the Phase 0 **audit log**.
+- **Frontend:** public `AdmissionEnquiry` page; admin `Admissions` funnel (stage filter + counts, review/accept/reject, copy-enquiry-link) with a **Convert** modal (pick class, optional roll number, optional guardian parent-invite that surfaces the join link). Sidebar **Admissions** link.
+- **Reuses:** invitation onboarding, content-safety scanner, Phase 0 rate limiting + audit log, Phase 1 email, `/auth/org/:slug` lookup.
 - **Dependencies:** Phase 0, Phase 1.
 - **Effort:** M–L.
-- **Exit criterion:** a public enquiry becomes an application, and an admin converts it to an enrolled student with a parent invite sent.
+- **Exit criterion:** a public enquiry becomes an application, and an admin converts it to an enrolled student with a parent invite sent. ✅ **met** (integration-tested).
+
+> **Progress log**
+> - 2026-07-09: **Completed Phase 3.**
+>   - **Data:** single `Admission` model (+ `Organization.admissions`, `Student.admission`), stage funnel `enquiry → reviewing → accepted/rejected → enrolled`, unique `student_id` link once converted.
+>   - **Public enquiry:** `POST /api/admissions/enquiry/:slug` (rate-limited, requires a contact method, scans free text, acknowledgement email); rejects unknown/inactive orgs.
+>   - **Admin funnel:** `GET /api/admissions` (list + per-stage counts), `PATCH /:id/stage` (reviewing/accepted/rejected + decision note → applicant email + audit), `POST /:id/convert` (creates the Student in a class, auto-roll-number, links the admission, optional guardian parent-invitation with join-link email + audit).
+>   - **Frontend:** public `/apply/:slug` form with a thank-you state; admin **Admissions** funnel + **Convert** modal; sidebar link.
+>   - **Tests green:** `npm test` → **5 suites, 47 passing** (+8 Phase 3: enquiry accept/unknown-org/missing-contact/flagged-content; list+counts+stage+auth guard+invalid-stage; convert creates student/links/parent-invite and rejects a bad class). `cleanDatabase` extended for `admission`. `cd client && npx vite build` succeeds.
+>
+> **Follow-ups deferred (not blockers):** no document/file uploads on the enquiry yet (text only); no in-app notification for admins on a new enquiry (applicant emails only); enquiry form isn't linked from a public marketing page (share the `/apply/:slug` link directly); duplicate-enquiry detection not implemented.
 
 ---
 

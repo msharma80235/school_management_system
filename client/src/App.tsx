@@ -14,6 +14,8 @@ import TeacherDashboard from './pages/TeacherDashboard';
 import ParentDashboard from './pages/ParentDashboard';
 import StudentDashboard from './pages/StudentDashboard';
 import QuizTake from './pages/QuizTake';
+import Admissions from './pages/Admissions';
+import AdmissionEnquiry from './pages/AdmissionEnquiry';
 import Register from './pages/Register';
 import ParentLogin from './pages/ParentLogin';
 import SubjectManagement from './pages/SubjectManagement';
@@ -53,6 +55,7 @@ export default function App() {
           <Route path="/super-login" element={<SuperLogin />} />
           <Route path="/join" element={<JoinPage />} />
           <Route path="/join/:code" element={<JoinPage />} />
+          <Route path="/apply/:slug" element={<AdmissionEnquiry />} />
 
           {/* Admin Routes */}
           <Route path="/admin" element={
@@ -80,6 +83,7 @@ export default function App() {
             <Route path="staff" element={<StaffManagement />} />
             <Route path="roles-duties" element={<RolesDutiesEditor />} />
             <Route path="invites" element={<InviteManagement />} />
+            <Route path="admissions" element={<Admissions />} />
             <Route path="users" element={<UserManagement />} />
             <Route path="moderation" element={<ModerationQueue />} />
             <Route path="content-safety" element={<ContentSafety />} />

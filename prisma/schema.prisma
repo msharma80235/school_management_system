@@ -41,6 +41,7 @@ model Organization {
   content_scan_results ContentScanResult[]
   submissions  Submission[]
   quiz_attempts QuizAttempt[]
+  admissions   Admission[]
 
   @@map("organizations")
 }
@@ -161,6 +162,7 @@ model Student {
   invitations  Invitation[]
   submissions  Submission[]
   quiz_attempts QuizAttempt[]
+  admission    Admission?
 
   @@unique([roll_number, org_id])
   @@map("students")
@@ -636,4 +638,34 @@ model QuizResponse {
 
   @@unique([attempt_id, question_id])
   @@map("quiz_responses")
+}
+
+// An admission record moves through the funnel via `stage`:
+// enquiry -> reviewing -> accepted | rejected -> enrolled (converted to a Student).
+// A public enquiry form creates one; the admin reviews, decides, and converts.
+model Admission {
+  id             String    @id @default(uuid())
+  org_id         String
+  org            Organization @relation(fields: [org_id], references: [id])
+  // prospective student
+  student_name   String
+  date_of_birth  String?
+  gender         String?
+  grade_applying String?    // desired class / grade level
+  // guardian / contact
+  guardian_name  String
+  email          String?
+  phone          String?
+  message        String?    // enquiry note from the applicant
+  stage          String    @default("enquiry") // enquiry | reviewing | accepted | rejected | enrolled
+  decision_note  String?
+  reviewed_by    String?    // admin user id (no relation — decoupled)
+  reviewed_at    DateTime?
+  student_id     String?    @unique // set once converted to an enrolled Student
+  student        Student?   @relation(fields: [student_id], references: [id])
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  @@index([org_id, stage])
+  @@map("admissions")
 }
