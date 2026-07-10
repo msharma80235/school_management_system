@@ -139,8 +139,9 @@ describe('Phase 5 — timetable generation', () => {
   it('leaves a teacher unassigned (with a warning) when a duty collides', async () => {
     const { org, token } = await createOrgAdmin('tt4');
     const { cls, teacher } = await seedClass(org.id);
-    // A duty overlapping the first period on day 1 (09:00–09:40)
-    await prisma.teacherScheduleSlot.create({ data: { teacher_id: teacher.id, day_of_week: 1, start_time: '09:00', end_time: '09:40', title: 'Bus Duty', org_id: org.id } });
+    // A duty spanning both morning periods on day 1 (09:00–10:20), so the Math
+    // teacher collides whichever period Math lands on.
+    await prisma.teacherScheduleSlot.create({ data: { teacher_id: teacher.id, day_of_week: 1, start_time: '09:00', end_time: '10:20', title: 'Bus Duty', org_id: org.id } });
 
     const res = await request(app).post('/api/schedules/generate').set('Authorization', `Bearer ${token}`)
       .send({ class_id: cls.id, periods_per_day: 2, days: [1], start_time: '09:00', period_minutes: 40 });

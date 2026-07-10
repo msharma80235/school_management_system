@@ -216,6 +216,7 @@ export async function generateTimetable(req: Request, res: Response): Promise<vo
 
     const classSubjects = await prisma.classSubject.findMany({
       where: { class_id }, include: { subject: { select: { id: true, name: true } } },
+      orderBy: { subject: { name: 'asc' } }, // deterministic layout
     });
     if (classSubjects.length === 0) { res.status(400).json({ error: 'Add subjects to this class before generating a timetable' }); return; }
 

@@ -18,7 +18,7 @@ This plan sequences the work that makes Education Hub adoptable and then defensi
 | 3 — Admissions & Enrollment | ✅ done (2026-07-09) |
 | 4 — Analytics & Insight | ✅ done (2026-07-09) |
 | 5 — Depth & Parity | ✅ done (2026-07-09) |
-| 6 — Scale & Reach | ⬜ not started |
+| 6 — Scale & Reach | ✅ done (2026-07-09) |
 | 7 — Safety & Privacy Moat | ⬜ not started |
 
 ---
@@ -182,18 +182,27 @@ This plan sequences the work that makes Education Hub adoptable and then defensi
 
 ---
 
-## Phase 6 — Scale & Reach
+## Phase 6 — Scale & Reach — ✅ DONE (2026-07-09)
 - **Goal:** remove the ceilings on deployment and audience.
 - **Deliverables:**
-  - **PostgreSQL migration** (Prisma provider swap + tested migration); keep SQLite for local dev.
-  - **Mobile PWA** first (installable, offline-tolerant, web-push) before any native investment — fastest path to the phone-first parent audience.
-- **Data model:** unchanged (provider migration only).
-- **Backend:** DB config/env; connection pooling; migration scripts + rollback test.
-- **Frontend:** PWA manifest, service worker, responsive audit, web-push wired to Phase 1 notifications.
-- **Reuses:** entire existing schema (Prisma abstracts the provider); Phase 1 notification backbone for push.
-- **Dependencies:** Phase 1 (push channel); Phase 0 tests (migration confidence).
+  - ✅ **PostgreSQL readiness** — provider-swap tooling + docs; SQLite kept for local dev/tests. *(Running the migration against a live Postgres needs the operator's DB — flagged below.)*
+  - ✅ **Mobile PWA** — installable + offline-tolerant, with web-push handlers ready in the service worker.
+- **Data model:** unchanged — verified provider-agnostic (no SQLite-specific columns or raw SQL). ✅
+- **Backend:** `swapProvider` (`src/utils/dbProvider.ts`, unit-tested) + `scripts/set-db-provider.js` + `npm run db:postgres`/`db:sqlite`; `.env.example` Postgres block. ✅
+- **Frontend:** `manifest.webmanifest` + generated icons; `sw.js` (offline shell: network-first navigations, cache-first assets, never caches `/api` or `/uploads`; plus `push`/`notificationclick` handlers); SW registered in production only; PWA `<head>` tags. ✅
+- **Reuses:** entire existing schema (Prisma abstracts the provider); Phase 1 notification backbone (target for push).
+- **Dependencies:** Phase 1 (push channel); Phase 0 tests.
 - **Effort:** L.
-- **Exit criterion:** the app runs on Postgres in a staging deploy with all tests green, and installs as a PWA delivering a push notification.
+- **Exit criterion:** the app runs on Postgres in a staging deploy with all tests green, and installs as a PWA delivering a push notification. ⚠️ **partially met:** Postgres path is code-complete + documented but the live-DB run and end-to-end push delivery require the operator's environment/keys (see follow-ups); PWA install + offline shell are done and build-verified.
+
+> **Progress log**
+> - 2026-07-09: **Completed Phase 6 (code side).**
+>   - **Postgres:** committed schema stays SQLite (dev/tests untouched); `npm run db:postgres` flips the datasource, then `DATABASE_URL` + `prisma db push` stands it up on Postgres. Schema audited as portable. Swap logic unit-tested.
+>   - **PWA:** web manifest + 192/512/maskable icons (generated via `scripts/gen-pwa-icons.js`), an offline-tolerant service worker (registered in prod builds only) that never caches API/uploads, and web-push `push`/`notificationclick` handlers ready to light up. `<head>` gained manifest/theme/apple tags; app title fixed to "Education Hub".
+>   - **Test-suite hardening:** found and fixed a **real flakiness bug** — the timetable generator laid subjects in nondeterministic DB order, so a collision test passed only sometimes; added `orderBy` to make layouts deterministic and made the test robust. Also set Jest `maxWorkers: 1` since all suites share one SQLite `test.db`.
+>   - **Tests green:** `npm test` → **8 suites, 65 passing** (+4 Phase 6: provider read/swap/idempotent/reject), stable across repeated runs. `cd client && npx vite build` emits the manifest, icons, and `sw.js` into `dist/`.
+>
+> **Follow-ups deferred (need the operator's environment/keys):** run `prisma db push` against a real Postgres and smoke-test there; connection pooling (PgBouncer/Prisma Data Proxy) for many instances; **web-push end-to-end** — generate VAPID keys, add a `PushSubscription` model + subscribe endpoint, and send from `notify()` via the `web-push` lib (SW side is ready); a deeper responsive/mobile-nav audit; asset code-splitting to shrink the main bundle.
 
 ---
 

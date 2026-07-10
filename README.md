@@ -176,6 +176,29 @@ Example agents: an [Ollama](https://ollama.com)-backed script (`python3 chat_age
 
 **The safety pipeline still wraps your agent on both sides.** Before the AI sees anything: input sanitization, the secrets/credentials filter, and the project-scope gate. After it answers: the reply is scanned with the same kid-safety wordlists used by Content Safety (a flagged reply is discarded and the knowledge base answers instead) and secret-shaped content is redacted. Answers from an AI agent are labeled "answered by local AI agent · safety-screened" in the chat widget, with the full step trace visible per message.
 
+## Deployment: PostgreSQL & PWA (scale & reach)
+
+Phase 6 of [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) — remove the single-server ceiling and reach phones.
+
+### PostgreSQL for production (SQLite stays for dev/tests)
+Prisma's datasource `provider` can't be an env var, so the committed schema stays on **SQLite** (so local dev and the test suite work with zero setup) and a script flips it for production:
+
+```bash
+npm run db:postgres        # sets the Prisma datasource provider to postgresql
+# set DATABASE_URL to your Postgres URL in .env
+npx prisma db push         # create the schema on Postgres
+npm run db:sqlite          # (to switch back to local SQLite dev)
+```
+
+The data model is provider-agnostic (no SQLite-specific columns or raw SQL), so no code changes are needed. Note the checked-in migrations under `prisma/migrations/` are SQLite-only; on Postgres use `prisma db push` (or generate a fresh Postgres migration lineage). The swap logic is unit-tested (`src/utils/dbProvider.ts`).
+
+> **Needs your environment:** the actual `db push` runs against a live Postgres instance you provide — everything else (provider swap, portability, docs) is done.
+
+### Progressive Web App (installable, offline-tolerant)
+The client is a PWA: a web manifest + icons make it **installable** on phones and desktops, and a service worker (registered in production builds only) gives an **offline-tolerant app shell** — navigations fall back to a cached shell, static assets are cache-first, and API/`/uploads` requests are never cached. The service worker also ships ready **web-push** handlers (show notification + focus-on-click).
+
+**To enable push end-to-end** (deferred, needs keys): generate VAPID keys, persist each browser's `PushSubscription`, and send pushes from the `notify()` service (Phase 1) via the `web-push` library. The service-worker side is already wired.
+
 ## Library & Timetable (depth)
 
 Two commonly-expected modules built on existing data (Phase 5 of [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)).
