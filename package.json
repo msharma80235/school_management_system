@@ -10,7 +10,9 @@
     "seed": "tsx src/prisma/seed.ts",
     "seed:mock": "tsx src/prisma/seed-mock.ts && tsx src/prisma/generate-logos.ts",
     "test": "NODE_ENV=test jest --forceExit --detectOpenHandles",
-    "test:phase1": "NODE_ENV=test jest --testPathPattern=phase1 --forceExit --detectOpenHandles"
+    "test:phase1": "NODE_ENV=test jest --testPathPattern=phase1 --forceExit --detectOpenHandles",
+    "db:sqlite": "node scripts/set-db-provider.js sqlite",
+    "db:postgres": "node scripts/set-db-provider.js postgresql"
   },
   "keywords": [],
   "author": "",

@@ -6,6 +6,10 @@ module.exports = {
   testMatch: ['**/*.test.ts'],
   globalSetup: '<rootDir>/src/tests/globalSetup.js',
   setupFiles: ['<rootDir>/src/tests/jestEnv.ts'],
+  // These are DB integration tests sharing one SQLite test.db; each suite's
+  // beforeEach wipes all tables, so they must run serially (not in parallel
+  // workers) to avoid cross-suite interference.
+  maxWorkers: 1,
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
