@@ -35,6 +35,7 @@ import notificationRoutes from './routes/notification.routes';
 import submissionRoutes from './routes/submission.routes';
 import admissionRoutes from './routes/admission.routes';
 import analyticsRoutes from './routes/analytics.routes';
+import libraryRoutes from './routes/library.routes';
 
 const app = express();
 
@@ -77,6 +78,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/submissions', submissionRoutes);
 app.use('/api/admissions', admissionRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/library', libraryRoutes);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' });

@@ -176,6 +176,13 @@ Example agents: an [Ollama](https://ollama.com)-backed script (`python3 chat_age
 
 **The safety pipeline still wraps your agent on both sides.** Before the AI sees anything: input sanitization, the secrets/credentials filter, and the project-scope gate. After it answers: the reply is scanned with the same kid-safety wordlists used by Content Safety (a flagged reply is discarded and the knowledge base answers instead) and secret-shaped content is redacted. Answers from an AI agent are labeled "answered by local AI agent · safety-screened" in the chat widget, with the full step trace visible per message.
 
+## Library & Timetable (depth)
+
+Two commonly-expected modules built on existing data (Phase 5 of [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)).
+
+- **Library circulation** — a **Library** page (admin/teacher) to issue books to students, return them, and track due dates and fines. Each book now has a copy count; the desk blocks an issue when all copies are out or the student already holds that title. Returns compute an overdue fine (per-day), which can be marked paid; the page summarizes books out, overdue, and unpaid fines. Students see their own borrowing history via `my-loans`.
+- **Timetable auto-generation** — an **Auto-generate** button on the Class Schedules page lays the class's subjects across a Mon–Fri × periods grid, assigns each subject's teacher when the class has one whose subject matches, and **skips any teacher who would be double-booked** (validated with the very same `findTeacherConflict` used for manual scheduling). It writes straight into the existing schedule slots (so it shows on the calendar) and reports any periods it had to leave without a teacher. Regenerating an existing timetable requires an explicit "replace".
+
 ## Analytics & Insight
 
 An admin **Analytics** page that turns the data you already have into decisions (Phase 4 of [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)) — no new data model, just aggregation, and charts drawn with plain CSS/SVG (no external chart library or CDN).

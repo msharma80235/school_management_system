@@ -35,6 +35,7 @@ export default function ClassScheduleManagement() {
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showGen, setShowGen] = useState(false);
 
   useEffect(() => {
     api.get('/schedules/classes').then((r) => {
@@ -124,11 +125,18 @@ export default function ClassScheduleManagement() {
           <h1 className="text-2xl font-bold text-gray-900">Class Schedules</h1>
           <p className="text-gray-500 text-sm mt-1">Weekly timetable per class — shown to everyone on the school calendar</p>
         </div>
-        <button onClick={() => openCreate()} disabled={!classId}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition flex items-center gap-2 disabled:opacity-50">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-          Add Period
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => setShowGen(true)} disabled={!classId}
+            className="bg-white border border-indigo-200 text-indigo-700 px-4 py-2 rounded-lg font-medium hover:bg-indigo-50 transition flex items-center gap-2 disabled:opacity-50">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+            Auto-generate
+          </button>
+          <button onClick={() => openCreate()} disabled={!classId}
+            className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition flex items-center gap-2 disabled:opacity-50">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+            Add Period
+          </button>
+        </div>
       </div>
 
       {success && <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm">{success}</div>}
@@ -274,6 +282,85 @@ export default function ClassScheduleManagement() {
           </div>
         </div>
       )}
+
+      {showGen && (
+        <GenerateModal classId={classId} onClose={() => setShowGen(false)}
+          onDone={(msg) => { setShowGen(false); flash(msg); fetchSlots(); }} />
+      )}
+    </div>
+  );
+}
+
+function GenerateModal({ classId, onClose, onDone }: { classId: string; onClose: () => void; onDone: (msg: string) => void }) {
+  const [startTime, setStartTime] = useState('09:00');
+  const [periodMinutes, setPeriodMinutes] = useState(40);
+  const [periodsPerDay, setPeriodsPerDay] = useState(6);
+  const [replace, setReplace] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [warnings, setWarnings] = useState<string[]>([]);
+
+  const submit = async () => {
+    setBusy(true); setError(''); setWarnings([]);
+    try {
+      const r = await api.post('/schedules/generate', {
+        class_id: classId, start_time: startTime, period_minutes: periodMinutes,
+        periods_per_day: periodsPerDay, days: [1, 2, 3, 4, 5], replace,
+      });
+      if (r.data.warnings?.length) { setWarnings(r.data.warnings); }
+      else onDone(r.data.message);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Generation failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
+        <div className="p-6 border-b border-gray-200">
+          <h2 className="text-lg font-bold text-gray-900">Auto-generate timetable</h2>
+          <p className="text-sm text-gray-500 mt-1">Lays this class's subjects across Mon–Fri and assigns matching teachers, skipping any that would be double-booked.</p>
+        </div>
+        <div className="p-6 space-y-4">
+          {error && <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{error}</div>}
+          {warnings.length > 0 ? (
+            <div className="space-y-3">
+              <div className="p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-sm">
+                Timetable generated, but {warnings.length} period(s) were left without a teacher due to clashes:
+                <ul className="list-disc list-inside mt-1 text-xs">{warnings.slice(0, 6).map((w, i) => <li key={i}>{w}</li>)}</ul>
+              </div>
+              <button onClick={() => onDone('Timetable generated')} className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700">Done</button>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Start</label>
+                  <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Period min</label>
+                  <input type="number" value={periodMinutes} onChange={(e) => setPeriodMinutes(Number(e.target.value))} className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Per day</label>
+                  <input type="number" value={periodsPerDay} onChange={(e) => setPeriodsPerDay(Number(e.target.value))} className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+              </div>
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input type="checkbox" checked={replace} onChange={(e) => setReplace(e.target.checked)} className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                Replace the existing timetable for this class
+              </label>
+              <div className="flex gap-3 pt-2">
+                <button onClick={onClose} className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium">Cancel</button>
+                <button onClick={submit} disabled={busy} className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium disabled:opacity-50">{busy ? 'Generating…' : 'Generate'}</button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

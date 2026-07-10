@@ -17,7 +17,7 @@ This plan sequences the work that makes Education Hub adoptable and then defensi
 | 2 — Learning Loop | ✅ done (2026-07-08) |
 | 3 — Admissions & Enrollment | ✅ done (2026-07-09) |
 | 4 — Analytics & Insight | ✅ done (2026-07-09) |
-| 5 — Depth & Parity | ⬜ not started |
+| 5 — Depth & Parity | ✅ done (2026-07-09) |
 | 6 — Scale & Reach | ⬜ not started |
 | 7 — Safety & Privacy Moat | ⬜ not started |
 
@@ -159,18 +159,26 @@ This plan sequences the work that makes Education Hub adoptable and then defensi
 
 ---
 
-## Phase 5 — Depth & Parity
+## Phase 5 — Depth & Parity — ✅ DONE (2026-07-09)
 - **Goal:** match competitor breadth on two commonly-expected modules.
 - **Deliverables:**
-  - **Library circulation:** issue/return, due dates, fines, per-student borrowing history, on top of the existing book catalog.
-  - **Timetable auto-generation:** a constraint solver over teachers/subjects/rooms/periods that emits candidate timetables into the existing `ClassScheduleSlot`/`TeacherScheduleSlot` models, validated by the current collision detection.
-- **Data model:** `BookCopy`, `Loan` (book_copy_id, student_id, issued_at, due_at, returned_at, fine); no new schedule models (reuse existing slots).
-- **Backend:** circulation controller; a timetable-generation service feeding the existing schedule validators.
-- **Frontend:** circulation desk UI; "generate timetable" action + review/accept on the schedule pages.
-- **Reuses:** book catalog + safety gate; `teacherConflict`/schedule collision detection.
-- **Dependencies:** none hard; benefits from Phase 4 (fine reports).
+  - ✅ **Library circulation:** issue/return, due dates, per-day fines, per-student borrowing history, on top of the existing book catalog.
+  - ✅ **Timetable auto-generation:** lays a class's subjects across a day×period grid into the existing `ClassScheduleSlot` model, assigning matching teachers and validated by the current `findTeacherConflict` collision detection.
+- **Data model:** `BookLoan` (book_id, student_id, issued_at, due_date, returned_at, fine, fine_paid) + `Book.total_copies` — modeled as a **loan against the catalog title with a copy count** rather than a separate `BookCopy` table (simpler; availability = total_copies − active loans). No new schedule models (reuse existing slots). ✅ migrated (`…_add_library_and_timetable`).
+- **Backend:** `library.controller` (issue/return/pay-fine/list/my-loans); `generateTimetable` added to the schedule controller feeding the existing validators. ✅
+- **Frontend:** **Library** circulation desk (issue form, status tabs, return/mark-paid, summary); **Auto-generate** button + modal on Class Schedules (start time / period length / periods-per-day / replace, surfaces unassigned-teacher warnings). ✅
+- **Reuses:** book catalog, `teacherConflict`/schedule collision detection, `ClassScheduleSlot`, students/books lists.
+- **Dependencies:** none hard.
 - **Effort:** L (timetable solver is the hard part).
-- **Exit criterion:** a librarian issues/returns a book with fine tracking; an admin generates a conflict-free timetable that passes existing collision checks.
+- **Exit criterion:** a librarian issues/returns a book with fine tracking; an admin generates a conflict-free timetable that passes existing collision checks. ✅ **met** (integration-tested).
+
+> **Progress log**
+> - 2026-07-09: **Completed Phase 5.**
+>   - **Library:** `BookLoan` model + `Book.total_copies`; issue (blocks when no copies free or the student already holds the title), return (per-day overdue fine, `FINE_PER_DAY`), pay-fine, list (active/overdue/returned + live overdue days/fine + summary of books-out/overdue/unpaid-fine-total), and student `my-loans`. Admin/teacher circulation desk UI.
+>   - **Timetable:** `POST /api/schedules/generate` — round-robins the class's subjects across a Mon–Fri × N-period grid (configurable start/length/count), maps each subject to a class teacher whose `subject` matches, creates slots incrementally, and drops a teacher from a cell (with a warning) when `findTeacherConflict` says they'd be double-booked. Refuses to overwrite an existing timetable without `replace`. Auto-generate modal on the schedule page.
+>   - **Tests green:** `npm test` → **7 suites, 61 passing** (+8 Phase 5: issue/no-copies/double-hold, overdue fine + pay, list summary + student my-loans; timetable grid + teacher assignment, replace guard, requires-subjects, duty-collision leaves a warning). `cleanDatabase` extended for `book_loans`. `cd client && npx vite build` succeeds.
+>
+> **Follow-ups deferred (not blockers):** no physical per-copy tracking (copy count only); timetable subject→teacher mapping is a name-match heuristic (no per-subject teacher assignment model) and it doesn't balance subject frequency or insert breaks/lunch; no room/location constraints in the solver; fine rate is a fixed constant (not configurable per org); no overdue-reminder notifications yet (could hang off Phase 1).
 
 ---
 

@@ -17,6 +17,7 @@ import QuizTake from './pages/QuizTake';
 import Admissions from './pages/Admissions';
 import AdmissionEnquiry from './pages/AdmissionEnquiry';
 import Analytics from './pages/Analytics';
+import LibraryCirculation from './pages/LibraryCirculation';
 import Register from './pages/Register';
 import ParentLogin from './pages/ParentLogin';
 import SubjectManagement from './pages/SubjectManagement';
@@ -80,6 +81,7 @@ export default function App() {
             <Route path="approvals" element={<Approvals />} />
             <Route path="homework" element={<HomeworkManagement />} />
             <Route path="books" element={<BookManagement />} />
+            <Route path="library" element={<LibraryCirculation />} />
             <Route path="volunteers" element={<VolunteerManagement />} />
             <Route path="documents" element={<DocumentManagement />} />
             <Route path="staff" element={<StaffManagement />} />
