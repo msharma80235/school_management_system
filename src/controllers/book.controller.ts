@@ -32,7 +32,7 @@ export async function uploadBookFile(req: Request, res: Response): Promise<void>
     if (!req.file) { res.status(400).json({ error: 'No file uploaded' }); return; }
 
     // Safety gate: a flagged copy is rejected and never stored
-    const gate = await gateUpload(existing.title, req.file.filename);
+    const gate = await gateUpload(existing.title, req.file.filename, req.user!.orgId);
     if (!gate.ok) { res.status(400).json({ error: gate.error }); return; }
 
     // Replace any previous copy
@@ -91,7 +91,7 @@ export async function createBook(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const gate = await gateUpload([title, author, publisher, custom_category].filter(Boolean).join(' '));
+    const gate = await gateUpload([title, author, publisher, custom_category].filter(Boolean).join(' '), null, req.user!.orgId);
     if (!gate.ok) { res.status(400).json({ error: gate.error }); return; }
 
     const approved = canModerate(req);
@@ -153,7 +153,7 @@ export async function updateBook(req: Request, res: Response): Promise<void> {
     const existing = await prisma.book.findFirst({ where: { id, org_id: req.user!.orgId } });
     if (!existing) { res.status(404).json({ error: 'Book not found' }); return; }
 
-    const gate = await gateUpload([title, author, publisher, custom_category].filter(Boolean).join(' '));
+    const gate = await gateUpload([title, author, publisher, custom_category].filter(Boolean).join(' '), null, req.user!.orgId);
     if (!gate.ok) { res.status(400).json({ error: gate.error }); return; }
 
     // Edits by non-moderators send the book back through review

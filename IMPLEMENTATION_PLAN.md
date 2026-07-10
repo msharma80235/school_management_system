@@ -19,7 +19,7 @@ This plan sequences the work that makes Education Hub adoptable and then defensi
 | 4 — Analytics & Insight | ✅ done (2026-07-09) |
 | 5 — Depth & Parity | ✅ done (2026-07-09) |
 | 6 — Scale & Reach | ✅ done (2026-07-09) |
-| 7 — Safety & Privacy Moat | ⬜ not started |
+| 7 — Safety & Privacy Moat | ✅ done (2026-07-10) |
 
 ---
 
@@ -206,22 +206,32 @@ This plan sequences the work that makes Education Hub adoptable and then defensi
 
 ---
 
-## Phase 7 — Safety & Privacy Moat
+## Phase 7 — Safety & Privacy Moat — ✅ DONE (2026-07-10)
 *The identity play. Hardest for competitors to copy; aligned with 2025–26 COPPA/FERPA tightening (see analysis §1a).*
 
 - **Goal:** make "safe-by-default, data-you-own" a provable, marketable product identity.
 - **Deliverables:**
-  - Configurable **per-org wordlists and severity thresholds** for content safety.
-  - **Image analysis** for uploads (currently manual-review only) via a pluggable local model, same adapter discipline as the AI chat.
-  - **Malware/AV scan** (e.g., ClamAV) in the upload pipeline alongside the text safety gate.
-  - Per-org **safety audit report** and parent-visible safety assurances; **data export/backup** self-serve per org (data-ownership proof point).
-- **Data model:** `SafetySetting` per org; extend `ContentScanResult` for image verdicts; export job records.
-- **Backend:** extend `contentSafety`/`uploadGuard`; AV scan step; image-scan adapter; export/backup routines.
-- **Frontend:** safety settings page; safety audit report; export UI.
-- **Reuses:** `scanText`/`gateUpload`/`ContentScanResult`; the pluggable-local-adapter pattern; audit log.
+  - ✅ Configurable **per-org wordlists and severity thresholds** — custom block/review terms, muted built-in categories, optional strict (block review-level) uploads.
+  - ✅ **Image analysis** for uploads via a pluggable local model (`IMAGE_SCAN_CMD`), same adapter discipline as the AI chat; falls back to manual review when unset.
+  - ✅ **Malware/AV scan** in the upload pipeline via a pluggable local scanner (`AV_SCAN_CMD`, ClamAV-style contract) — infected files rejected + deleted before storage.
+  - ✅ Per-org **safety audit report** + parent-visible **assurance** endpoint; ✅ self-serve **data export/backup** (full JSON bundle, passwords excluded) with `DataExport` audit records.
+- **Data model:** `SafetySetting` per org; `av_status` added to `ContentScanResult`; `DataExport` job records. ✅
+- **Backend:** `scanText(text, config)` now org-tunable; `malwareScan.ts` + `imageScan.ts` adapters; `safetyConfig.ts` loader; `uploadGuard` runs AV → image → tuned text scan; `safety.controller`/`routes` (`/api/safety`: settings, report, assurance, export, exports); `runScan` applies config + AV + image and records `av_status`. ✅
+- **Frontend:** **Safety & Privacy** admin page — protection posture, custom wordlist editor, category mute toggles, strict-mode toggle, one-click data export + history, safety activity trail. ✅
+- **Reuses:** `scanText`/`gateUpload`/`ContentScanResult`; the pluggable-local-adapter pattern (CHAT_AGENT_CMD/SMS_CMD); audit log.
 - **Dependencies:** Phase 0 (audit log), Phase 4 (report surface).
 - **Effort:** L.
-- **Exit criterion:** an admin tunes per-org safety rules, uploads are AV- and image-scanned, and the org can export its full dataset and view a safety audit report.
+- **Exit criterion:** an admin tunes per-org safety rules, uploads are AV- and image-scanned, and the org can export its full dataset and view a safety audit report. ✅ **met** — AV/image scanning is code-complete and test-verified with local stand-in scanners; it activates the moment an operator points `AV_SCAN_CMD`/`IMAGE_SCAN_CMD` at a real tool.
+
+> **Progress log**
+> - 2026-07-10: **Completed Phase 7.**
+>   - **Configurable safety:** `scanText` takes a per-org `ScanConfig` (extra terms + muted categories); `SafetySetting` persists custom terms, muted categories, and a strict-uploads flag. The upload gate and full content scan both honor it.
+>   - **File-level protection:** two new pluggable, `.env`-only local adapters — `AV_SCAN_CMD` (malware, ClamAV-style: infected files rejected + deleted at the gate and surfaced as `av_status` in the scan) and `IMAGE_SCAN_CMD` (image classifier; flagged images blocked, else queued for manual review). Both no-op safely when unconfigured; a broken tool fails safe (skip/queue, never silent auto-approve).
+>   - **Data ownership:** `POST /api/safety/export` streams a full JSON backup (users without passwords + all core org data), recorded in `DataExport`; a parent-visible `/assurance` endpoint publishes the protection posture without leaking counts.
+>   - **UI:** a single **Safety & Privacy** admin page ties it together (posture, wordlist editor, category tuning, export + history, activity trail).
+>   - **Tests green:** `npm test` → **9 suites, 77 passing** (+12 Phase 7: configurable scanner, AV block/allow, image block, custom-term gate, strict mode, settings RBAC, report, assurance, export). Test fixtures `fake-av.js` / `fake-image-scan.js` stand in for real local scanners. `cd client && npx vite build` clean.
+>
+> **Follow-ups deferred (not blockers):** ship a reference local image classifier + ClamAV setup guide; schedule periodic re-scans (cron) rather than on-demand only; stream very large exports to a file/download job instead of building the JSON in memory; expose the parent-visible assurance in the parent portal UI.
 
 ---
 

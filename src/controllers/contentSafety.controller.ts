@@ -3,7 +3,10 @@ import fs from 'fs';
 import path from 'path';
 import { extractPdfText } from '../utils/pdfText';
 import prisma from '../prisma/client';
-import { scanText, imageOutcome, unscannableOutcome, ScanOutcome } from '../utils/contentSafety';
+import { scanText, imageOutcome, unscannableOutcome, ScanOutcome, ScanConfig } from '../utils/contentSafety';
+import { scanImage } from '../utils/imageScan';
+import { scanFileForMalware, AvStatus } from '../utils/malwareScan';
+import { loadOrgSafety } from '../utils/safetyConfig';
 import { audit } from '../utils/audit';
 
 interface SourceItem {
@@ -107,23 +110,44 @@ async function collectSources(orgId: string): Promise<SourceItem[]> {
   return items;
 }
 
-async function scanItem(item: SourceItem): Promise<ScanOutcome> {
-  // Always scan the metadata text; a bad title alone should flag
-  const metaOutcome = scanText(item.text);
-  if (!item.file_path) return metaOutcome;
+interface ItemScan { outcome: ScanOutcome; av_status: AvStatus | null; }
+
+async function scanItem(item: SourceItem, config: ScanConfig): Promise<ItemScan> {
+  // Malware-scan the attached file first (no-op unless AV_SCAN_CMD is set).
+  let av_status: AvStatus | null = null;
+  if (item.file_path) {
+    const abs = path.resolve('uploads', path.basename(item.file_path));
+    if (fs.existsSync(abs)) {
+      const res = await scanFileForMalware(abs);
+      av_status = res.status;
+      if (res.status === 'infected') {
+        return { outcome: { status: 'flagged', categories: ['malware'], matches: [], note: `Malware detected (${res.signature || 'threat'})` }, av_status };
+      }
+    }
+  }
+
+  // Always scan the metadata text; a bad title alone should flag.
+  const metaOutcome = scanText(item.text, config);
+  if (!item.file_path) return { outcome: metaOutcome, av_status };
 
   const file = await extractFileText(item.file_path);
   if (file.kind === 'pdf' && file.text !== null) {
-    const fileOutcome = scanText(`${item.text}\n${file.text}`);
-    return fileOutcome;
+    return { outcome: scanText(`${item.text}\n${file.text}`, config), av_status };
   }
-  if (metaOutcome.status === 'flagged') return metaOutcome;
-  if (file.kind === 'image') return imageOutcome(item.source_type === 'student_photo' ? 'A student photo' : item.source_type === 'org_logo' ? 'The logo' : 'The attached file');
-  if (file.kind === 'other') return unscannableOutcome(path.extname(item.file_path).replace('.', '') || 'this');
+  if (metaOutcome.status === 'flagged') return { outcome: metaOutcome, av_status };
+  if (file.kind === 'image') {
+    const kind = item.source_type === 'student_photo' ? 'A student photo' : item.source_type === 'org_logo' ? 'The logo' : 'The attached file';
+    // Runs the configured image classifier; falls back to manual-review when none is set.
+    const v = await scanImage(path.resolve('uploads', path.basename(item.file_path)), kind);
+    return { outcome: v.analyzed
+      ? { status: v.status, categories: v.status === 'clean' ? [] : ['image'], matches: [], note: v.note }
+      : imageOutcome(kind), av_status };
+  }
+  if (file.kind === 'other') return { outcome: unscannableOutcome(path.extname(item.file_path).replace('.', '') || 'this'), av_status };
   if (file.kind === 'missing') {
-    return { status: 'review', categories: [], matches: [], note: 'The referenced file is missing from storage' };
+    return { outcome: { status: 'review', categories: [], matches: [], note: 'The referenced file is missing from storage' }, av_status };
   }
-  return metaOutcome;
+  return { outcome: metaOutcome, av_status };
 }
 
 // Run (or re-run) the full scan. Prior "marked safe" resolutions survive a
@@ -132,6 +156,7 @@ export async function runScan(req: Request, res: Response): Promise<void> {
   try {
     const orgId = req.user!.orgId;
     const items = await collectSources(orgId);
+    const safety = await loadOrgSafety(orgId);
 
     const previous = await prisma.contentScanResult.findMany({ where: { org_id: orgId } });
     const resolved = new Map(previous.filter((p) => p.resolution).map((p) => [`${p.source_type}:${p.source_id}`, p]));
@@ -140,7 +165,7 @@ export async function runScan(req: Request, res: Response): Promise<void> {
 
     let flagged = 0, review = 0, clean = 0;
     for (const item of items) {
-      const outcome = await scanItem(item);
+      const { outcome, av_status } = await scanItem(item, safety.scan);
       if (outcome.status === 'flagged') flagged++;
       else if (outcome.status === 'review') review++;
       else clean++;
@@ -156,6 +181,7 @@ export async function runScan(req: Request, res: Response): Promise<void> {
           categories: outcome.categories.length ? JSON.stringify(outcome.categories) : null,
           matches: outcome.matches.length ? JSON.stringify(outcome.matches) : null,
           note: outcome.note,
+          av_status,
           // keep the earlier human decision
           resolved_by: prior?.resolved_by || null,
           resolved_at: prior?.resolved_at || null,

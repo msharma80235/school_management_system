@@ -42,6 +42,7 @@ import ParentDetail from './pages/ParentDetail';
 import ClassScheduleManagement from './pages/ClassScheduleManagement';
 import TeacherScheduleManagement from './pages/TeacherScheduleManagement';
 import ContentSafety from './pages/ContentSafety';
+import SafetySettings from './pages/SafetySettings';
 import AuditLog from './pages/AuditLog';
 import JoinPage from './pages/JoinPage';
 import SuperDashboard from './pages/SuperDashboard';
@@ -91,6 +92,7 @@ export default function App() {
             <Route path="users" element={<UserManagement />} />
             <Route path="moderation" element={<ModerationQueue />} />
             <Route path="content-safety" element={<ContentSafety />} />
+            <Route path="safety-settings" element={<SafetySettings />} />
             <Route path="audit-log" element={<AuditLog />} />
             <Route path="calendar" element={<CalendarPage />} />
             <Route index element={<Navigate to="dashboard" replace />} />
