@@ -16,7 +16,7 @@ This plan sequences the work that makes Education Hub adoptable and then defensi
 | 1 — Communication & Notifications | ✅ done (2026-07-08) |
 | 2 — Learning Loop | ✅ done (2026-07-08) |
 | 3 — Admissions & Enrollment | ✅ done (2026-07-09) |
-| 4 — Analytics & Insight | ⬜ not started |
+| 4 — Analytics & Insight | ✅ done (2026-07-09) |
 | 5 — Depth & Parity | ⬜ not started |
 | 6 — Scale & Reach | ⬜ not started |
 | 7 — Safety & Privacy Moat | ⬜ not started |
@@ -138,16 +138,24 @@ This plan sequences the work that makes Education Hub adoptable and then defensi
 
 ---
 
-## Phase 4 — Analytics & Insight
+## Phase 4 — Analytics & Insight — ✅ DONE (2026-07-09)
 - **Goal:** turn the data you already store into decisions.
-- **Deliverables:** dashboards for attendance trends, grade distribution, at-risk-student flags, content-safety/moderation summary, and super-admin platform stats; exportable reports (CSV/PDF).
-- **Data model:** none required (aggregation queries); optionally materialized summary tables if performance demands.
-- **Backend:** analytics controller with aggregation endpoints per role scope.
-- **Frontend:** dashboard pages with a charting layer (self-contained, no external CDN — bundle the chart lib).
-- **Reuses:** all existing domain data; role scoping.
+- **Deliverables:** ✅ dashboards for attendance trends, grade distribution, at-risk-student flags, and a content-safety/approvals summary; ✅ CSV export. Super-admin platform stats already exist on the Super Admin dashboard (unchanged).
+- **Data model:** none — pure aggregation queries. ✅
+- **Backend:** `analytics.controller` with admin-only, org-scoped endpoints (`overview`, `attendance-trend`, `grade-distribution`, `at-risk`, `export/students.csv`). ✅
+- **Frontend:** admin **Analytics** page with charts drawn in **plain CSS/SVG — no external chart library or CDN**. ✅
+- **Reuses:** all existing domain data (attendance, marks, exams, admissions, content-safety); role scoping.
 - **Dependencies:** Phases 1–3 enrich the data but aren't blocking.
 - **Effort:** M.
-- **Exit criterion:** an admin sees attendance and grade-distribution charts and can export a class report; at-risk students are flagged.
+- **Exit criterion:** an admin sees attendance and grade-distribution charts and can export a class report; at-risk students are flagged. ✅ **met** (integration-tested).
+
+> **Progress log**
+> - 2026-07-09: **Completed Phase 4.** No new tables — all aggregation.
+>   - **Endpoints (admin-only, org-scoped):** `overview` (student/teacher/class counts, overall attendance rate, exam-approval + admissions breakdowns, unresolved content-safety count); `attendance-trend` (monthly rate for the last N months, present+late counted as attended); `grade-distribution` (approved-exam percentages bucketed + average-by-subject); `at-risk` (students under 75% attendance — min 5 days — and/or under 40% average, with reasons, worst first); `export/students.csv` (streamed CSV with proper escaping).
+>   - **Frontend:** `Analytics` page — stat cards, attendance-trend and grade-distribution bar charts, subject-average bars, at-risk table, and an authenticated CSV download (blob). All charts hand-drawn with CSS/SVG (no dependency added). Sidebar **Analytics** link + `/admin/analytics` route.
+>   - **Tests green:** `npm test` → **6 suites, 53 passing** (+6 Phase 4: overview counts/rate, trend totals, grade buckets + subject average, at-risk flags the struggling student but not the strong one, CSV shape, non-admin denial). `cd client && npx vite build` succeeds.
+>
+> **Follow-ups deferred (not blockers):** no PDF export (CSV only); no per-class / date-range filters on the charts yet; at-risk thresholds are fixed constants (not configurable); metrics computed on the fly (fine at current scale — revisit with materialized summaries if orgs get very large).
 
 ---
 

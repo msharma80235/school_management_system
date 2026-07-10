@@ -176,6 +176,18 @@ Example agents: an [Ollama](https://ollama.com)-backed script (`python3 chat_age
 
 **The safety pipeline still wraps your agent on both sides.** Before the AI sees anything: input sanitization, the secrets/credentials filter, and the project-scope gate. After it answers: the reply is scanned with the same kid-safety wordlists used by Content Safety (a flagged reply is discarded and the knowledge base answers instead) and secret-shaped content is redacted. Answers from an AI agent are labeled "answered by local AI agent · safety-screened" in the chat widget, with the full step trace visible per message.
 
+## Analytics & Insight
+
+An admin **Analytics** page that turns the data you already have into decisions (Phase 4 of [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)) — no new data model, just aggregation, and charts drawn with plain CSS/SVG (no external chart library or CDN).
+
+- **Overview** — active students, teachers, classes, overall attendance rate, marks pending approval, and content-safety items still needing review.
+- **Attendance trend** — attendance rate by month for the last 6 months (bars turn red below 75%).
+- **Grade distribution** — approved-exam percentages bucketed (0–39 … 90–100), plus an average-by-subject breakdown.
+- **At-risk students** — everyone flagged for attendance below 75% or an average below 40%, with the specific reason(s), worst first.
+- **Export** — one-click CSV of every active student with class, attendance %, and average %.
+
+All endpoints are admin-only and scoped to the caller's organization. (Platform-wide stats for the super admin already live on the Super Admin dashboard.)
+
 ## Admissions & Enrollment
 
 A prospective-student funnel that feeds the existing onboarding (Phase 3 of [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)).

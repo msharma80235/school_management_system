@@ -16,6 +16,7 @@ import StudentDashboard from './pages/StudentDashboard';
 import QuizTake from './pages/QuizTake';
 import Admissions from './pages/Admissions';
 import AdmissionEnquiry from './pages/AdmissionEnquiry';
+import Analytics from './pages/Analytics';
 import Register from './pages/Register';
 import ParentLogin from './pages/ParentLogin';
 import SubjectManagement from './pages/SubjectManagement';
@@ -62,6 +63,7 @@ export default function App() {
             <ProtectedRoute role="admin"><Layout /></ProtectedRoute>
           }>
             <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="analytics" element={<Analytics />} />
             <Route path="teachers" element={<TeacherManagement />} />
             <Route path="classes" element={<ClassManagement />} />
             <Route path="classes/:classId/students" element={<StudentManagement />} />
