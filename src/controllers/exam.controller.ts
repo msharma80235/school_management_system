@@ -7,6 +7,8 @@ import prisma from '../prisma/client';
 import { canAccessClass } from '../utils/classAccess';
 import { generateQuiz, generateSubjective, GeneratedQuestion } from '../utils/examGenerator';
 import { scanText } from '../utils/contentSafety';
+import { chapterSummaries } from '../utils/chapters';
+import { loadBookChapters } from '../utils/bookReader';
 import { notify } from '../utils/notify';
 
 // On marks approval, tell the affected students and their parents. Runs after
@@ -145,6 +147,60 @@ export async function generateExamQuestions(req: Request, res: Response): Promis
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to generate questions' });
+  }
+}
+
+// List the chapters detected in a library book, so a teacher can build a
+// quiz from a specific chapter. Metadata only — no full text leaves the server.
+export async function getBookChapters(req: Request, res: Response): Promise<void> {
+  try {
+    const bookId = String(req.query.book_id || '');
+    if (!bookId) { res.status(400).json({ error: 'book_id is required' }); return; }
+
+    const result = await loadBookChapters(bookId, req.user!.orgId);
+    if ('error' in result) { res.status(result.status).json({ error: result.error }); return; }
+
+    res.json({ book: result.book, chapters: chapterSummaries(result.chapters) });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to read the book' });
+  }
+}
+
+// Generate a gradable quiz/subjective paper from ONE chapter of a library book.
+// Returns the same shape as generateExamQuestions, so the existing review →
+// create-exam flow consumes it unchanged. The source text never leaves the server.
+export async function generateFromBook(req: Request, res: Response): Promise<void> {
+  try {
+    const { book_id, chapter_index, format, count } = req.body;
+    if (!book_id || !['quiz', 'subjective'].includes(format)) {
+      res.status(400).json({ error: 'book_id and format (quiz | subjective) are required' });
+      return;
+    }
+
+    const result = await loadBookChapters(book_id, req.user!.orgId);
+    if ('error' in result) { res.status(result.status).json({ error: result.error }); return; }
+
+    const idx = parseInt(chapter_index);
+    const chapter = result.chapters.find((c) => c.index === idx);
+    if (!chapter) { res.status(404).json({ error: 'Chapter not found in this book' }); return; }
+    if (chapter.text.trim().length < 100) {
+      res.status(422).json({ error: 'Not enough readable text in this chapter to generate questions' });
+      return;
+    }
+
+    const n = Math.min(Math.max(parseInt(count) || (format === 'quiz' ? 10 : 5), 3), 25);
+    const questions = format === 'quiz' ? generateQuiz(chapter.text, n) : generateSubjective(chapter.text, n);
+    if (questions.length < 3) { res.status(422).json({ error: 'Could not build enough questions from this chapter' }); return; }
+
+    res.json({
+      format,
+      questions,
+      total_marks: questions.reduce((s, q) => s + q.marks, 0),
+      chapter: { index: chapter.index, title: chapter.title },
+      source_book: result.book.title,
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to generate questions from the book' });
   }
 }
 

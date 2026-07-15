@@ -255,6 +255,15 @@ Closes the assign → do → grade → gradebook loop (Phase 2 of [IMPLEMENTATIO
 
 Students take quizzes at **My Quizzes** on their dashboard; teachers manage submissions from the **Submissions** button on each homework card.
 
+## Learn from the Library: Chapter Quizzes & Read-Aloud
+
+Two features that turn an uploaded book into study material, both driven by the same offline PDF text extraction.
+
+- **Chapter-wise quiz from a book** (admin/teacher, under **Exams & Marks → "Quiz from Book"**). Instead of uploading a fresh PDF, pick a book already in the library. The server extracts its text, **detects chapters** (headings like "Chapter 3" / "अध्याय 3", or an even split into parts when a book has no headings), and you choose one chapter. That chapter's text feeds the **existing question generator**, so the result is an ordinary gradable **quiz or subjective exam** — it flows into the same review → create → online-quiz → marks pipeline. Only the generated questions become the exam; the book text never leaves the server.
+- **Read & Listen** (students, self-study, under **Read & Listen**). A student opens an approved library book, picks a chapter, and gets two things: the chapter read **aloud** by the browser's built-in speech synthesis (free, offline, with play/pause/stop and speed control, English or Hindi voice), and a plain-language **"In simple words" explanation** — a short summary, key points, and key terms. The explanation uses the optional local AI (`CHAT_AGENT_CMD`) when configured — kid-safety-scanned, with a flagged reply discarded — and otherwise a built-in rule-based extractive summary. Students only ever see **approved** books.
+
+Chapter detection and the explanation summary are unit-tested; the reader and generator endpoints have integration tests (with the PDF extractor mocked, since `pdfjs-dist` is ESM and can't run under ts-jest's CommonJS transpile — it works at runtime).
+
 ## Notifications (email · in-app · SMS)
 
 Users are kept informed instead of having to log in and check (Phase 1 of [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)).
