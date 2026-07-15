@@ -20,6 +20,7 @@ This plan sequences the work that makes Education Hub adoptable and then defensi
 | 5 — Depth & Parity | ✅ done (2026-07-09) |
 | 6 — Scale & Reach | ✅ done (2026-07-09) |
 | 7 — Safety & Privacy Moat | ✅ done (2026-07-10) |
+| E1 — Book-driven learning (enhancement) | ✅ done (2026-07-15) |
 
 ---
 
@@ -232,6 +233,31 @@ This plan sequences the work that makes Education Hub adoptable and then defensi
 >   - **Tests green:** `npm test` → **9 suites, 77 passing** (+12 Phase 7: configurable scanner, AV block/allow, image block, custom-term gate, strict mode, settings RBAC, report, assurance, export). Test fixtures `fake-av.js` / `fake-image-scan.js` stand in for real local scanners. `cd client && npx vite build` clean.
 >
 > **Follow-ups deferred (not blockers):** ship a reference local image classifier + ClamAV setup guide; schedule periodic re-scans (cron) rather than on-demand only; stream very large exports to a file/download job instead of building the JSON in memory; expose the parent-visible assurance in the parent portal UI.
+
+---
+
+## Post-plan enhancements
+
+*Features added by request after the numbered phases (0–7) shipped. Logged here for traceability; each is already merged to `develop`.*
+
+### E1 — Book-driven learning: chapter quizzes & read-aloud — ✅ DONE (2026-07-15)
+*Turns an uploaded library book into study material, two ways, on the same offline PDF text extraction. No schema change — reuses `Book`/`Exam`.*
+
+- **Goal:** make the existing book library actively useful for teaching and self-study.
+- **Deliverables:**
+  - ✅ **Chapter-wise quiz from a book** (admin/teacher, Exams & Marks → "Quiz from Book"): pick a library book → **detect chapters** (headings like `Chapter 3` / `अध्याय 3`; even "Parts" split when a book has none) → pick one → generate a **gradable quiz/subjective exam** through the *existing* review → create → online-quiz → marks pipeline. Only questions become the exam; book text stays server-side.
+  - ✅ **Read & Listen** (students, self-study): open an **approved** book, pick a chapter, hear it **read aloud** by the browser's built-in speech synthesis (offline; play/pause/stop, speed, en/hi), plus an **"In simple words" explanation** (summary + key points + key terms) — optional local AI (`CHAT_AGENT_CMD`, kid-safety-scanned, flagged replies discarded) or a rule-based extractive summary.
+- **Backend:** `GET /api/exams/book-chapters`, `POST /api/exams/generate-from-book`; `GET /api/reader/books` + `/books/:id/chapters` + `/books/:id/chapters/:index` (student-only, class books first, unapproved hidden). Shared utils `chapters.ts`, `explain.ts`, `bookReader.ts`.
+- **Frontend:** ExamMarks "Quiz from Book" flow; student `BookReader` page ("Read & Listen") + route + nav.
+- **Reuses:** `extractPdfText`, `generateQuiz`/`generateSubjective`, the create-exam/online-quiz/marks flow, the `CHAT_AGENT_CMD` local-adapter pattern, `scanText` safety.
+- **Effort:** M.
+- **Exit criterion:** a teacher builds a gradable quiz from a chosen book chapter, and a student listens to a chapter with a plain-language explanation. ✅ met.
+
+> **Progress log**
+> - 2026-07-15: Shipped (PR #14). `npm test` → **10 suites, 87 passing** (+10: chapter detection, part-fallback, rule-based & AI explanation, AI safety-discard, staff chapter-quiz + errors, student reader + approval gating + RBAC). Client `vite build` clean.
+> - **Test note:** reader integration tests mock `pdfText` because `pdfjs-dist` is ESM (`import.meta`) and won't run under ts-jest's CommonJS transpile; real extraction verified at runtime via `tsx`.
+>
+> **Follow-ups deferred (not blockers):** highlight-follow (karaoke-style) during read-aloud; per-student bookmarks / last-position; cache chapter explanations to avoid re-running the summarizer each open; offer the reader to parents too.
 
 ---
 
