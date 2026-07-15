@@ -14,6 +14,7 @@ import TeacherDashboard from './pages/TeacherDashboard';
 import ParentDashboard from './pages/ParentDashboard';
 import StudentDashboard from './pages/StudentDashboard';
 import QuizTake from './pages/QuizTake';
+import BookReader from './pages/BookReader';
 import Admissions from './pages/Admissions';
 import AdmissionEnquiry from './pages/AdmissionEnquiry';
 import Analytics from './pages/Analytics';
@@ -130,6 +131,7 @@ export default function App() {
           }>
             <Route path="dashboard" element={<StudentDashboard />} />
             <Route path="quiz/:examId" element={<QuizTake />} />
+            <Route path="read" element={<BookReader />} />
             <Route path="documents" element={<SchoolDocuments />} />
             <Route path="calendar" element={<CalendarPage />} />
             <Route index element={<Navigate to="dashboard" replace />} />

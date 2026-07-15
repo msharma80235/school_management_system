@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import path from 'path';
-import { createExam, listExams, deleteExam, submitForApproval, approveMarks, rejectMarks, bulkApprove, approvalSummary, importExamFile, generateExamQuestions, getExamQuestions, downloadExamPaperPdf } from '../controllers/exam.controller';
+import { createExam, listExams, deleteExam, submitForApproval, approveMarks, rejectMarks, bulkApprove, approvalSummary, importExamFile, generateExamQuestions, getBookChapters, generateFromBook, getExamQuestions, downloadExamPaperPdf } from '../controllers/exam.controller';
 import { getQuizForStudent, submitQuiz, getMyQuizResult, listQuizAttempts, getMyQuizzes } from '../controllers/quiz.controller';
 import { authenticate, authorize } from '../middleware/auth';
 
@@ -28,6 +28,8 @@ router.use(authenticate);
 router.post('/', authorize('admin', 'teacher'), createExam);
 router.post('/import-file', authorize('admin', 'teacher'), upload.single('file'), importExamFile);
 router.post('/generate-questions', authorize('admin', 'teacher'), generateExamQuestions);
+router.get('/book-chapters', authorize('admin', 'teacher'), getBookChapters);
+router.post('/generate-from-book', authorize('admin', 'teacher'), generateFromBook);
 router.get('/', listExams);
 router.get('/my-quizzes', authorize('student'), getMyQuizzes);
 router.get('/:id/questions', authorize('admin', 'teacher', 'volunteer'), getExamQuestions);

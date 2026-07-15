@@ -37,6 +37,7 @@ import admissionRoutes from './routes/admission.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import libraryRoutes from './routes/library.routes';
 import safetyRoutes from './routes/safety.routes';
+import readerRoutes from './routes/reader.routes';
 
 const app = express();
 
@@ -81,6 +82,7 @@ app.use('/api/admissions', admissionRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/library', libraryRoutes);
 app.use('/api/safety', safetyRoutes);
+app.use('/api/reader', readerRoutes);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' });

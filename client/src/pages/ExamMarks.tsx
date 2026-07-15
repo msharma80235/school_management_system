@@ -62,6 +62,16 @@ export default function ExamMarks() {
   const [generating, setGenerating] = useState(false);
   const [genQuestions, setGenQuestions] = useState<GenQuestion[] | null>(null);
 
+  // Source of the generated questions: an uploaded PDF, or a chapter of a
+  // book already in the library.
+  const [genSource, setGenSource] = useState<'file' | 'book'>('file');
+  const [books, setBooks] = useState<{ id: string; title: string; author: string }[]>([]);
+  const [selectedBookId, setSelectedBookId] = useState('');
+  const [bookChapters, setBookChapters] = useState<{ index: number; title: string; word_count: number }[]>([]);
+  const [selectedChapter, setSelectedChapter] = useState<number | null>(null);
+  const [loadingChapters, setLoadingChapters] = useState(false);
+  const [bookStaged, setBookStaged] = useState(false); // a book+chapter picked, ready to generate
+
   // View question paper
   const [paperExam, setPaperExam] = useState<Exam | null>(null);
   const [paperQuestions, setPaperQuestions] = useState<PaperQuestion[]>([]);
@@ -115,15 +125,52 @@ export default function ExamMarks() {
     } catch (err: any) { setError(err.response?.data?.error || 'Failed'); }
   };
 
-  const openImport = () => {
+  const openImport = (source: 'file' | 'book' = 'file') => {
     setImportFile(null);
     setImportResult(null);
     setGenQuestions(null);
     setGenFormat('quiz');
     setGenCount(10);
     setError('');
+    setGenSource(source);
+    setSelectedBookId('');
+    setBookChapters([]);
+    setSelectedChapter(null);
+    setBookStaged(false);
     setExamForm({ name: '', exam_type: '', term: 'term1', subject_id: '', max_marks: '100', exam_date: '' });
     setShowImport(true);
+    if (source === 'book' && books.length === 0) {
+      // Only books with an uploaded file can be read for questions.
+      api.get('/books').then((r) => setBooks((r.data.books || []).filter((b: any) => b.file_path).map((b: any) => ({ id: b.id, title: b.title, author: b.author }))));
+    }
+  };
+
+  // Book mode — load the chapters detected in the selected library book.
+  const loadBookChapters = async (bookId: string) => {
+    setSelectedBookId(bookId);
+    setBookChapters([]);
+    setSelectedChapter(null);
+    if (!bookId) return;
+    setError('');
+    setLoadingChapters(true);
+    try {
+      const r = await api.get(`/exams/book-chapters?book_id=${bookId}`);
+      setBookChapters(r.data.chapters);
+      if (r.data.chapters.length === 1) setSelectedChapter(1);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Could not read this book');
+    } finally {
+      setLoadingChapters(false);
+    }
+  };
+
+  // Book mode — stage the chosen chapter, then reuse the shared format/generate steps.
+  const stageBookChapter = () => {
+    if (!selectedBookId || !selectedChapter) return;
+    const book = books.find((b) => b.id === selectedBookId);
+    const chapter = bookChapters.find((c) => c.index === selectedChapter);
+    setBookStaged(true);
+    setExamForm((f) => ({ ...f, name: f.name || `${book?.title || 'Book'} — ${chapter?.title || `Chapter ${selectedChapter}`}` }));
   };
 
   // Step 1: upload + read the PDF, prefill the form from what was found
@@ -152,21 +199,21 @@ export default function ExamMarks() {
     }
   };
 
-  // Step 2: generate a quiz or subjective paper from the file's content
+  // Step 2: generate a quiz or subjective paper from the chosen source
+  // (an uploaded PDF, or one chapter of a library book).
   const handleGenerate = async () => {
-    if (!importResult) return;
+    if (genSource === 'file' ? !importResult : !bookStaged) return;
     setError('');
     setGenerating(true);
     try {
-      const r = await api.post('/exams/generate-questions', {
-        file_path: importResult.file_path,
-        format: genFormat,
-        count: genCount,
-      });
+      const r = genSource === 'book'
+        ? await api.post('/exams/generate-from-book', { book_id: selectedBookId, chapter_index: selectedChapter, format: genFormat, count: genCount })
+        : await api.post('/exams/generate-questions', { file_path: importResult!.file_path, format: genFormat, count: genCount });
       setGenQuestions(r.data.questions);
+      const fallbackName = genSource === 'book' ? `${r.data.source_book} — ${r.data.chapter?.title || ''}`.trim() : importResult!.suggested.name;
       setExamForm((f) => ({
         ...f,
-        name: f.name || `${importResult.suggested.name} — ${genFormat === 'quiz' ? 'Quiz' : 'Subjective Test'}`,
+        name: f.name || `${fallbackName} — ${genFormat === 'quiz' ? 'Quiz' : 'Subjective Test'}`,
         exam_type: f.exam_type || (genFormat === 'quiz' ? 'class_test' : 'midterm_written'),
       }));
     } catch (err: any) {
@@ -308,10 +355,15 @@ export default function ExamMarks() {
               className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition">
               + Create Exam
             </button>
-            <button onClick={openImport}
+            <button onClick={() => openImport('file')}
               className="border border-indigo-300 text-indigo-700 px-4 py-2 rounded-lg font-medium hover:bg-indigo-50 transition flex items-center gap-2">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
               Create from File
+            </button>
+            <button onClick={() => openImport('book')}
+              className="border border-indigo-300 text-indigo-700 px-4 py-2 rounded-lg font-medium hover:bg-indigo-50 transition flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+              Quiz from Book
             </button>
           </>
         )}
@@ -479,16 +531,50 @@ export default function ExamMarks() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200">
-              <h2 className="text-lg font-bold text-gray-900">Create Exam from File</h2>
+              <h2 className="text-lg font-bold text-gray-900">{genSource === 'book' ? 'Quiz from a Book Chapter' : 'Create Exam from File'}</h2>
               <p className="text-sm text-gray-500 mt-0.5">
-                Upload a PDF, then generate a gradable quiz or subjective test from its content — only the questions become the exam
+                {genSource === 'book'
+                  ? 'Pick a library book and a chapter, then generate a gradable quiz or subjective test from that chapter — only the questions become the exam'
+                  : 'Upload a PDF, then generate a gradable quiz or subjective test from its content — only the questions become the exam'}
               </p>
             </div>
             <div className="p-6 space-y-4">
               {error && <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{error}</div>}
 
-              {/* Step 1: pick + read the file */}
-              {!importResult ? (
+              {/* Step 1: pick the source (an uploaded PDF, or a library book chapter) */}
+              {!(genSource === 'file' ? importResult : bookStaged) ? (
+                genSource === 'book' ? (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Book</label>
+                      <select value={selectedBookId} onChange={(e) => loadBookChapters(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="">Select a book from the library...</option>
+                        {books.map((b) => <option key={b.id} value={b.id}>{b.title} — {b.author}</option>)}
+                      </select>
+                      {books.length === 0 && <p className="text-xs text-gray-400 mt-1">No library books with an uploaded file yet. Add one under Books first.</p>}
+                    </div>
+                    {loadingChapters && <p className="text-sm text-gray-500">Reading the book and finding chapters…</p>}
+                    {bookChapters.length > 0 && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Chapter</label>
+                        <select value={selectedChapter ?? ''} onChange={(e) => setSelectedChapter(e.target.value ? Number(e.target.value) : null)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 outline-none focus:ring-2 focus:ring-indigo-500">
+                          <option value="">Select a chapter...</option>
+                          {bookChapters.map((c) => <option key={c.index} value={c.index}>{c.title} ({c.word_count} words)</option>)}
+                        </select>
+                      </div>
+                    )}
+                    <div className="flex gap-3">
+                      <button onClick={() => setShowImport(false)}
+                        className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium">Cancel</button>
+                      <button onClick={stageBookChapter} disabled={!selectedBookId || !selectedChapter}
+                        className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium disabled:opacity-50">
+                        Use this chapter
+                      </button>
+                    </div>
+                  </>
+                ) : (
                 <>
                   <label className="block border-2 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/40 transition">
                     <svg className="w-10 h-10 text-gray-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
@@ -509,12 +595,14 @@ export default function ExamMarks() {
                     </button>
                   </div>
                 </>
+                )
               ) : !genQuestions ? (
                 /* Step 2: choose the exam format and generate */
                 <>
                   <p className="text-sm text-gray-600">
-                    Read <span className="font-medium">{importFile?.name}</span> ({importResult.pages} pages).
-                    Choose what kind of exam to build from it:
+                    {genSource === 'book'
+                      ? <>Building from <span className="font-medium">{bookChapters.find((c) => c.index === selectedChapter)?.title}</span>. Choose what kind of exam to build:</>
+                      : <>Read <span className="font-medium">{importFile?.name}</span> ({importResult?.pages} pages). Choose what kind of exam to build from it:</>}
                   </p>
                   <div className="grid grid-cols-2 gap-3">
                     <button type="button" onClick={() => { setGenFormat('quiz'); setGenCount(10); }}
@@ -536,8 +624,8 @@ export default function ExamMarks() {
                     </select>
                   </div>
                   <div className="flex gap-3">
-                    <button onClick={() => { setImportResult(null); setImportFile(null); }}
-                      className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium">Different File</button>
+                    <button onClick={() => { if (genSource === 'book') { setBookStaged(false); } else { setImportResult(null); setImportFile(null); } }}
+                      className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium">{genSource === 'book' ? 'Different Chapter' : 'Different File'}</button>
                     <button onClick={handleGenerate} disabled={generating}
                       className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium disabled:opacity-50">
                       {generating ? 'Generating...' : `Generate ${genFormat === 'quiz' ? 'Quiz' : 'Test'}`}
