@@ -20,6 +20,8 @@ This plan sequences the work that makes Education Hub adoptable and then defensi
 | 5 — Depth & Parity | ✅ done (2026-07-09) |
 | 6 — Scale & Reach | ✅ done (2026-07-09) |
 | 7 — Safety & Privacy Moat | ✅ done (2026-07-10) |
+| E1 — Book-driven learning (enhancement) | ✅ done (2026-07-15) |
+| E2 — Contact / Support (enhancement) | ✅ done (2026-07-15) |
 
 ---
 
@@ -232,6 +234,36 @@ This plan sequences the work that makes Education Hub adoptable and then defensi
 >   - **Tests green:** `npm test` → **9 suites, 77 passing** (+12 Phase 7: configurable scanner, AV block/allow, image block, custom-term gate, strict mode, settings RBAC, report, assurance, export). Test fixtures `fake-av.js` / `fake-image-scan.js` stand in for real local scanners. `cd client && npx vite build` clean.
 >
 > **Follow-ups deferred (not blockers):** ship a reference local image classifier + ClamAV setup guide; schedule periodic re-scans (cron) rather than on-demand only; stream very large exports to a file/download job instead of building the JSON in memory; expose the parent-visible assurance in the parent portal UI.
+
+---
+
+## Post-plan enhancements
+
+*Features added by request after the numbered phases (0–7) shipped. Logged here for traceability; each is already merged to `develop`.*
+
+### E1 — Book-driven learning: chapter quizzes & read-aloud — ✅ DONE (2026-07-15)
+*Turns an uploaded library book into study material, two ways, on the same offline PDF text extraction. No schema change — reuses `Book`/`Exam`. (PR #14.)*
+
+- **Chapter-wise quiz from a book** (admin/teacher, Exams & Marks → "Quiz from Book"): pick a library book → **detect chapters** (headings like `Chapter 3` / `अध्याय 3`; even "Parts" split when a book has none) → pick one → generate a **gradable quiz/subjective exam** through the *existing* review → create → online-quiz → marks pipeline. Only questions become the exam; book text stays server-side.
+- **Read & Listen** (students, self-study): open an **approved** book, pick a chapter, hear it **read aloud** by the browser's built-in speech synthesis (offline; play/pause/stop, speed, en/hi), plus an **"In simple words" explanation** — optional local AI (`CHAT_AGENT_CMD`, kid-safety-scanned, flagged replies discarded) or a rule-based extractive summary.
+- **Backend:** `GET /api/exams/book-chapters`, `POST /api/exams/generate-from-book`; `GET /api/reader/books` + `/books/:id/chapters` + `/books/:id/chapters/:index` (student-only, class books first, unapproved hidden). Shared utils `chapters.ts`, `explain.ts`, `bookReader.ts`. **Frontend:** ExamMarks "Quiz from Book" flow; student `BookReader` page + route + nav.
+- **Reuses:** `extractPdfText`, `generateQuiz`/`generateSubjective`, the create-exam/online-quiz/marks flow, the `CHAT_AGENT_CMD` adapter pattern, `scanText`.
+
+### E2 — Contact / Support on every page — ✅ DONE (2026-07-15)
+*A support channel for every user, anywhere in the app. No schema change. (PR #16.)*
+
+- **Goal:** any signed-in user, on any page, can reach their school's admins about a website problem or anything else.
+- **Deliverables:**
+  - ✅ A fixed **Contact support** button in the shared `Layout` (beside the help chat) — visible to every role on every authenticated page.
+  - ✅ Message delivered two ways: an **in-app notification** to every org admin (except the sender if an admin uses it) — always works — and an **email** to the admins + org address when SMTP is set, with **reply-to the sender** (best-effort; never blocks the in-app path).
+- **Backend:** `POST /api/support` (`support.controller`/`routes`) — kid-safety-scanned, carries the page for context, rate-limited to curb floods; `email.ts` `Mail` gained an optional `replyTo`. **Frontend:** `SupportButton.tsx` in `Layout`.
+- **Reuses:** `notify()`, `sendEmail()`, `scanText`, `authRateLimit`.
+- **Exit criterion:** a student (or any role) sends a message from any page and the org's admins receive it in-app (and by email when configured). ✅ met.
+
+> **Progress log**
+> - 2026-07-15: Shipped E1 (PR #14) and E2 (PR #16). Combined suite after E2: `npm test` → **11 suites, 92 passing** (E1 +10, E2 +5: admin notified, sender not self-notified, short-message reject, kid-safety block, auth required). Client `vite build` clean.
+>
+> **Follow-ups deferred (not blockers):** E1 — highlight-follow during read-aloud, per-student bookmarks, cache chapter explanations, offer the reader to parents. E2 — a public (pre-login) support form routed to the platform super-admin; an admin-side inbox/threading instead of relying on notifications + email.
 
 ---
 
