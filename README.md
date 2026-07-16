@@ -276,6 +276,15 @@ Each user controls delivery per category (**marks, moderation, attendance, invit
 
 **Events wired so far:** marks approved → the affected students **and their parents**; content (book/document) approved or rejected → the uploader; invitation created with an email → the invitee gets a join-link email. Delivery is best-effort and fired after the request responds, so notifications never slow the underlying action. See all env vars in `.env.example`.
 
+## Contact Support (all users, every page)
+
+A **Contact support** button is fixed on every page for every signed-in role (rendered once in the shared `Layout`, beside the help-chat button). Anyone with a problem — the website, or anything else — writes a short subject + message and it goes to their **school's administrators**:
+
+- **In-app notification** to every admin in the org (except the sender, if an admin uses it) — always works, no configuration needed.
+- **Email** to the admins + org address when SMTP is configured, with **reply-to set to the sender** so an admin can respond directly. Best-effort; a missing SMTP setup never blocks the in-app delivery.
+
+The message carries the page the user was on (for context), passes the same kid-safety scan as the rest of the app, and the endpoint (`POST /api/support`) is rate-limited to curb floods.
+
 ## Note for Developers
 
 > ⚠️ **Before deploying to production:** copy `.env.example` to `.env` and set a strong, random `JWT_SECRET`. In production (`NODE_ENV=production`) the app now **refuses to start** if `JWT_SECRET` is missing or left as the known `'default-secret'` value (`src/utils/jwt.ts`), so tokens can never be signed with a guessable key. Outside production a convenience fallback keeps local dev and the test suite running without configuration.

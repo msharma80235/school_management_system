@@ -13,6 +13,7 @@ interface Mail {
   subject: string;
   text: string;
   html?: string;
+  replyTo?: string; // e.g. a support request replies straight to the user who sent it
 }
 
 let resolved = false;
@@ -50,7 +51,7 @@ export async function sendEmail(mail: Mail): Promise<{ delivered: boolean; reaso
   }
 
   try {
-    await t.sendMail({ from, to: mail.to, subject: mail.subject, text: mail.text, html: mail.html });
+    await t.sendMail({ from, to: mail.to, subject: mail.subject, text: mail.text, html: mail.html, replyTo: mail.replyTo });
     return { delivered: true };
   } catch (err) {
     console.error('email send failed:', err);

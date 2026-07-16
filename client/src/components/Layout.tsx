@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import ChatWidget from './ChatWidget';
 import NotificationBell from './NotificationBell';
+import SupportButton from './SupportButton';
 
 export default function Layout() {
   return (
@@ -11,6 +12,7 @@ export default function Layout() {
         <Outlet />
       </main>
       <NotificationBell />
+      <SupportButton />
       <ChatWidget />
     </div>
   );
